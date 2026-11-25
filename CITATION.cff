@@ -4,6 +4,8 @@ title: "CHLI: Centenarians Healthy Longevity Index"
 version: 1.0.0
 type: software
 license: MIT
+repository-code: "https://github.com/jviviana04-coder/chli-index"
+url: "https://jviviana04-coder.github.io/chli-index/"
 # The repository URL and the Zenodo DOI are added when the repository is published.
 authors:
   - family-names: Aya

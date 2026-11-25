@@ -19,6 +19,11 @@ license = "MIT"
 license-files = ["LICENSE"]
 dependencies = ["numpy>=1.23", "pandas>=1.5", "scipy>=1.9", "scikit-learn>=1.1", "openpyxl>=3.0.7"]
 
+[project.urls]
+Homepage = "https://jviviana04-coder.github.io/chli-index/"
+Repository = "https://github.com/jviviana04-coder/chli-index"
+Changelog = "https://github.com/jviviana04-coder/chli-index/blob/main/CHANGELOG.md"
+
 [project.optional-dependencies]
 test = ["pytest>=7"]
 

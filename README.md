@@ -7,6 +7,10 @@ status**. It was developed in a cohort of 163 Colombian centenarians.
 This repository lets any group **build the CHLI in its own cohort** with the same method as the
 article, either in a browser or in Python. It does not contain the Colombian participant data.
 
+- **Web calculator:** <https://jviviana04-coder.github.io/chli-index/>
+- **Guided tour:** <https://jviviana04-coder.github.io/chli-index/tour.html>
+- **Code and documentation:** <https://github.com/jviviana04-coder/chli-index>
+
 > **What the CHLI is not.** It is not a diagnostic test or a prognostic score. It ranks people
 > *within the cohort on which it is built*, so scores from two cohorts are not on the same scale.
 > In the original cohort the physical function domain (D1) alone discriminated mortality as well as
