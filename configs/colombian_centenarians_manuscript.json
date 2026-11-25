@@ -1,0 +1,159 @@
+{
+  "name": "CHLI · Colombian Centenarians (manuscript configuration)",
+  "description": "Configuration used in the manuscript. Column names are those of the cohort master dataset. All 23 candidate variables are listed; the pipeline removes four by reliability screening, as reported in Section 2.5.1.",
+  "domains": [
+    {
+      "id": "D1",
+      "label": "Physical function",
+      "type": "reflective",
+      "items": [
+        {
+          "name": "Barthel index",
+          "column": "PuntBarthel",
+          "polarity": 1
+        },
+        {
+          "name": "Lawton-Brody scale",
+          "column": "PuntLyB",
+          "polarity": 1
+        },
+        {
+          "name": "SPPB",
+          "column": "PuntFinSPPB",
+          "polarity": 1
+        },
+        {
+          "name": "Handgrip dynamometry",
+          "column": "Dinamometria",
+          "polarity": 1
+        },
+        {
+          "name": "Frailty score",
+          "column": "FinFragilidad",
+          "polarity": -1
+        },
+        {
+          "name": "Sarcopenia classification",
+          "column": "FinSarcopenia",
+          "polarity": -1
+        }
+      ]
+    },
+    {
+      "id": "D2",
+      "label": "Molecular biological aging",
+      "type": "formative",
+      "items": [
+        {
+          "name": "mtDNA-CN",
+          "column": "mtDNA-CN",
+          "polarity": 1
+        },
+        {
+          "name": "Leukocyte telomere length",
+          "column": "LongTelomérica",
+          "polarity": 1
+        },
+        {
+          "name": "Phenotypic age residual",
+          "column": "pheno_age_age_sex_invnorm_r",
+          "polarity": -1
+        }
+      ]
+    },
+    {
+      "id": "D3",
+      "label": "Cognitive-psychological status",
+      "type": "reflective",
+      "items": [
+        {
+          "name": "MMSE",
+          "column": "PuntFinMMSE",
+          "polarity": 1
+        },
+        {
+          "name": "CDR-SB",
+          "column": "PuntFinCDR",
+          "polarity": -1
+        },
+        {
+          "name": "Yesavage GDS",
+          "column": "PuntFinYasavage",
+          "polarity": -1
+        },
+        {
+          "name": "SWLS",
+          "column": "PuntFinSWLS",
+          "polarity": 1
+        },
+        {
+          "name": "ISI",
+          "column": "PuntFinISI",
+          "polarity": -1
+        },
+        {
+          "name": "GAI-SF",
+          "column": "PuntFinGAISF",
+          "polarity": -1
+        }
+      ]
+    },
+    {
+      "id": "D4",
+      "label": "Metabolic-nutritional status",
+      "type": "reflective",
+      "items": [
+        {
+          "name": "MNA",
+          "column": "PuntuMNA",
+          "polarity": 1
+        },
+        {
+          "name": "BMI, distance to optimum",
+          "column": "IMC",
+          "polarity": 1,
+          "transform": "neg_abs_distance",
+          "target": 24
+        },
+        {
+          "name": "Hemoglobin",
+          "column": "Hb",
+          "polarity": 1
+        },
+        {
+          "name": "Serum albumin",
+          "column": "Albumina",
+          "polarity": 1
+        },
+        {
+          "name": "CRP",
+          "column": "PCR",
+          "polarity": -1
+        },
+        {
+          "name": "Vitamin D",
+          "column": "VitD",
+          "polarity": 1
+        },
+        {
+          "name": "Vitamin B12",
+          "column": "VitB12",
+          "polarity": 1
+        },
+        {
+          "name": "Serum creatinine",
+          "column": "Creatin",
+          "polarity": -1
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "screening_method": "spearman",
+    "screening_threshold": 0.2,
+    "max_missing_reflective": 0.3,
+    "pc1_min_variance": 0.2,
+    "bootstrap_n": 2000,
+    "seed": 20261020
+  }
+}

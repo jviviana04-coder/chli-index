@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chli"
+version = "1.0.0"
+description = "Centenarians Healthy Longevity Index: build a multidimensional phenotypic index of healthy longevity in your own cohort"
+readme = "README.md"
+authors = [{ name = "Viviana Aya" }, { name = "Natali Mercado Solorzano" }, { name = "Juan-Manuel Anaya" }]
+keywords = ["healthy longevity", "centenarians", "composite index", "aging", "phenotyping"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+requires-python = ">=3.9"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = ["numpy>=1.23", "pandas>=1.5", "scipy>=1.9", "scikit-learn>=1.1", "openpyxl>=3.0.7"]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
+
+[project.scripts]
+chli = "chli.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

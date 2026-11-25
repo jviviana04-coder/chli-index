@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CHLI · guided tour</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+/* A guided tour in nine chapters, one at a time (arrow keys or buttons). The interactive
+   parts run the real pipeline (chli-core.js) on the simulated example cohort; figures
+   quoted from the article are labelled as such. Same tokens as the calculator. */
+:root {
+  --bg: #f6f8f7; --surface: #ffffff; --ink: #18211e; --muted: #56625e; --line: #d9e1de; --field: #7b8883;
+  --accent: #1f6f5c; --accent-ink: #ffffff; --soft: #e8f0ed; --grey: #9aa6a2;
+  --d1: #1b7f5f; --d2: #2d4b9a; --d3: #6a52a3; --d4: #b5532a; --warn: #855b00; --warn-bg: #fff4d6;
+  --f-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111816; --surface: #18211e; --ink: #e6eeeb; --muted: #a3b0ab; --line: #2c3834; --field: #6e7d78;
+  --accent: #5cc3a5; --accent-ink: #0d1412; --soft: #1f2b27; --grey: #5d6b66;
+  --d1: #4cc49a; --d2: #7f9ef0; --d3: #b29cf0; --d4: #f08a5d; --warn: #f2c24b; --warn-bg: #3a3014; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #111816; --surface: #18211e; --ink: #e6eeeb; --muted: #a3b0ab; --line: #2c3834; --field: #6e7d78;
+  --accent: #5cc3a5; --accent-ink: #0d1412; --soft: #1f2b27; --grey: #5d6b66;
+  --d1: #4cc49a; --d2: #7f9ef0; --d3: #b29cf0; --d4: #f08a5d; --warn: #f2c24b; --warn-bg: #3a3014; color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.6 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 18px 40px; display: grid; gap: 18px; min-height: 100vh; grid-template-rows: auto auto 1fr auto; }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; line-height: 1.2; text-wrap: balance; }
+h2 { font-size: clamp(1.5rem, 3.4vw, 2.1rem); font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 1.02rem; font-weight: 600; }
+p { margin: 0; }
+a { color: var(--accent); }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; border-radius: 8px; border: 1px solid var(--field); background: var(--surface); padding: 8px 14px; min-height: 40px; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button:disabled { opacity: .45; cursor: default; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h2[tabindex="-1"]:focus { outline: none; }
+#domcards { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+select { background: var(--surface); border: 1px solid var(--field); border-radius: 8px; padding: 6px 10px; min-height: 40px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); min-height: 32px; }
+.mono, .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.small { font-size: 0.88rem; }
+
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.eyebrow { font: 600 0.75rem/1 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.lang { display: inline-flex; border: 1px solid var(--field); border-radius: 999px; overflow: hidden; }
+.lang button { border: none; border-radius: 0; min-height: 34px; padding: 4px 14px; background: transparent; font-size: 0.85rem; font-weight: 600; }
+.lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.lang button:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; box-shadow: inset 0 0 0 4px var(--surface); }
+
+.progress { display: grid; gap: 8px; }
+.dots { display: flex; gap: 6px; flex-wrap: wrap; list-style: none; margin: 0; padding: 0; }
+.dots button { min-height: 32px; padding: 3px 10px; font-size: 0.8rem; border-radius: 999px; border-color: var(--line); color: var(--muted); }
+.dots button[aria-current="step"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.bar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); transition: width .25s ease; }
+
+.chapter { display: grid; gap: 18px; align-content: start; }
+.chapter > header { display: grid; gap: 8px; }
+.kicker { font: 600 0.8rem var(--f-mono); color: var(--muted); }
+.lede { font-size: 1.08rem; max-width: 72ch; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 16px; align-items: start; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; display: grid; gap: 10px; min-width: 0; }
+.card.dom { border-top: 5px solid var(--c); }
+.card.dom h3 { color: var(--c); }
+.tag { font: 600 0.72rem var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+ul.list { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.big { font: 700 2.2rem/1 var(--f-display); color: var(--accent); }
+.fact { display: grid; gap: 2px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.source { font-size: 0.82rem; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; }
+.sim { display: inline-block; font: 600 0.72rem var(--f-mono); letter-spacing: .05em; text-transform: uppercase; background: var(--warn-bg); color: var(--warn); padding: 2px 8px; border-radius: 999px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.controls label { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.out { font: 600 1.1rem var(--f-display); }
+svg { display: block; width: 100%; height: auto; }
+svg text { fill: var(--muted); font: 12px var(--f-mono); }
+svg .lbl { fill: var(--ink); font: 13px var(--f-body); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.85rem; color: var(--muted); }
+.key { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+.flow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 0.92rem; }
+.flow span.step { background: var(--soft); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+.flow span.step.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.flow i { color: var(--muted); font-style: normal; }
+.pheno { display: inline-block; font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--soft); }
+.cta { display: flex; gap: 12px; flex-wrap: wrap; }
+.cta a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--accent); text-decoration: none; font-weight: 600; }
+.cta a.primary { background: var(--accent); color: var(--accent-ink); }
+nav.pager { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; border-top: 1px solid var(--line); padding-top: 14px; }
+.hint { font-size: 0.82rem; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media print { .progress, nav.pager, .lang { display: none !important; } .chapter[hidden] { display: grid !important; } .chapter { break-after: page; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1 class="brand"><span class="eyebrow">CHLI</span> <span class="muted small" style="font:400 0.88rem var(--f-body)" data-t="brand"></span></h1>
+    <div class="lang" role="group" aria-label="Language / Idioma">
+      <button type="button" data-lang="en" aria-pressed="true" lang="en">English</button>
+      <button type="button" data-lang="es" aria-pressed="false" lang="es">Español</button>
+    </div>
+  </header>
+
+  <nav class="progress" aria-label="Chapters" data-aria="nav_chapters">
+    <ol class="dots" id="dots"></ol>
+    <div class="bar" aria-hidden="true"><i id="bar"></i></div>
+  </nav>
+
+  <main id="chapters">
+
+    <!-- 1 · why -->
+    <section class="chapter" data-ch="why" aria-labelledby="h-why">
+      <header><span class="kicker" data-t="k1"></span><h2 id="h-why" tabindex="-1" data-t="t1"></h2><p class="lede" data-t="l1"></p></header>
+      <div class="cols">
+        <div class="card"><h3 data-t="why_a_h"></h3><p data-t="why_a"></p></div>
+        <div class="card"><h3 data-t="why_b_h"></h3><p data-t="why_b"></p></div>
+        <div class="card"><h3 data-t="why_c_h"></h3><p data-t="why_c"></p></div>
+      </div>
+      <div class="flow" role="group" aria-label="Steps" data-aria="nav_steps" id="flow1"></div>
+    </section>
+
+    <!-- 2 · the four domains -->
+    <section class="chapter" data-ch="domains" aria-labelledby="h-dom" hidden>
+      <header><span class="kicker" data-t="k2"></span><h2 id="h-dom" tabindex="-1" data-t="t2"></h2><p class="lede" data-t="l2"></p></header>
+      <div class="cols" id="domcards"></div>
+      <p class="source" data-t="src_article"></p>
+    </section>
+
+    <!-- 3 · one scale -->
+    <section class="chapter" data-ch="scale" aria-labelledby="h-scale" hidden>
+      <header><span class="kicker" data-t="k3"></span><h2 id="h-scale" tabindex="-1" data-t="t3"></h2><p class="lede" data-t="l3"></p></header>
+      <div class="card">
+        <div class="controls"><label><span data-t="pick_var"></span> <select id="sel-var"></select></label><span class="sim" data-t="simulated"></span></div>
+        <div class="cols">
+          <div><h3 data-t="raw_h"></h3><div id="hist-raw"></div><p class="small muted" id="raw-note"></p></div>
+          <div><h3 data-t="z_h"></h3><div id="hist-z"></div><p class="small muted" id="z-note"></p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · do the variables agree? -->
+    <section class="chapter" data-ch="screen" aria-labelledby="h-screen" hidden>
+      <header><span class="kicker" data-t="k4"></span><h2 id="h-screen" tabindex="-1" data-t="t4"></h2><p class="lede" data-t="l4"></p></header>
+      <div class="cols">
+        <div class="card">
+          <div class="controls">
+            <label><span data-t="pick_dom"></span> <select id="sel-scr"></select></label>
+            <span class="sim" data-t="simulated"></span>
+          </div>
+          <label for="thr" class="small"><span data-t="thr_lbl"></span> <b class="num" id="thr-v"></b></label>
+          <input type="range" id="thr" min="0" max="0.6" step="0.01" value="0.2" aria-describedby="thr-help">
+          <p class="small muted" id="thr-help" data-t="thr_help"></p>
+          <div id="itbars"></div>
+          <div class="legend"><span><i class="key" style="background:var(--accent)"></i><span data-t="kept"></span></span><span><i class="key" style="background:var(--grey)"></i><span data-t="set_aside"></span></span></div>
+        </div>
+        <div class="card">
+          <h3 data-t="alpha_h"></h3>
+          <p><span data-t="alpha_now"></span> <span class="out num" id="alpha-v"></span></p>
+          <p class="small" data-t="alpha_expl"></p>
+          <p class="source" data-t="screen_article"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · one score per domain -->
+    <section class="chapter" data-ch="pca" aria-labelledby="h-pca" hidden>
+      <header><span class="kicker" data-t="k5"></span><h2 id="h-pca" tabindex="-1" data-t="t5"></h2><p class="lede" data-t="l5"></p></header>
+      <div class="cols">
+        <div class="card"><div class="controls"><h3 data-t="weights_h"></h3><span class="sim" data-t="simulated"></span></div><div id="wbars"></div></div>
+        <div class="card">
+          <h3 data-t="pca_article_h"></h3>
+          <div class="facts">
+            <div class="fact" style="--c:var(--d1)"><span class="big" style="color:var(--d1)">61.6%</span><span class="small">D1</span></div>
+            <div class="fact"><span class="big" style="color:var(--d3)">45.3%</span><span class="small">D3</span></div>
+            <div class="fact"><span class="big" style="color:var(--d4)">37.7%</span><span class="small">D4</span></div>
+          </div>
+          <p class="small" data-t="pca_article"></p>
+          <p class="small" data-t="formative_expl"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 · the index -->
+    <section class="chapter" data-ch="index" aria-labelledby="h-index" hidden>
+      <header><span class="kicker" data-t="k6"></span><h2 id="h-index" tabindex="-1" data-t="t6"></h2><p class="lede" data-t="l6"></p></header>
+      <div class="card">
+        <div class="controls"><label for="who" style="flex:1 1 260px"><span data-t="who_lbl"></span></label><span class="sim" data-t="simulated"></span></div>
+        <input type="range" id="who" min="0" max="179" step="1" value="20" aria-describedby="who-out">
+        <div class="cols">
+          <div id="profile"></div>
+          <div class="fact" id="who-out" aria-live="polite"></div>
+        </div>
+      </div>
+      <p class="source" data-t="index_formula"></p>
+    </section>
+
+    <!-- 7 · phenotypes -->
+    <section class="chapter" data-ch="pheno" aria-labelledby="h-pheno" hidden>
+      <header><span class="kicker" data-t="k7"></span><h2 id="h-pheno" tabindex="-1" data-t="t7"></h2><p class="lede" data-t="l7"></p></header>
+      <div class="cols">
+        <div class="card">
+          <div class="controls" role="radiogroup" aria-labelledby="split-lbl">
+            <span id="split-lbl" class="small" data-t="split_lbl"></span>
+            <label><input type="radio" name="split" value="median" checked> <span data-t="split_med"></span></label>
+            <label><input type="radio" name="split" value="tert"> <span data-t="split_tert"></span></label>
+            <span class="sim" data-t="simulated"></span>
+          </div>
+          <div id="hist-ph"></div>
+          <p class="small muted" id="ph-note" aria-live="polite"></p>
+        </div>
+        <div class="card">
+          <h3 data-t="ph_article_h"></h3>
+          <div class="facts"><div class="fact"><span class="big">82</span><span class="small" data-t="lab_h"></span></div><div class="fact"><span class="big" style="color:var(--d4)">81</span><span class="small" data-t="lab_nh"></span></div></div>
+          <p class="small" data-t="ph_article"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 · is it robust? -->
+    <section class="chapter" data-ch="robust" aria-labelledby="h-rob" hidden>
+      <header><span class="kicker" data-t="k8"></span><h2 id="h-rob" tabindex="-1" data-t="t8"></h2><p class="lede" data-t="l8"></p></header>
+      <div class="cols">
+        <div class="card"><span class="big">0.955</span><p data-t="rob1"></p></div>
+        <div class="card"><span class="big">0.921</span><p data-t="rob2"></p></div>
+        <div class="card"><span class="big">0.03–0.61</span><p data-t="rob3"></p></div>
+      </div>
+      <p class="source" data-t="src_article"></p>
+    </section>
+
+    <!-- 9 · what it is for -->
+    <section class="chapter" data-ch="use" aria-labelledby="h-use" hidden>
+      <header><span class="kicker" data-t="k9"></span><h2 id="h-use" tabindex="-1" data-t="t9"></h2><p class="lede" data-t="l9"></p></header>
+      <div class="cols">
+        <div class="card"><h3 data-t="use_yes_h"></h3><ul class="list"><li data-t="use1"></li><li data-t="use2"></li><li data-t="use3"></li><li data-t="use4"></li></ul></div>
+        <div class="card"><h3 data-t="use_no_h"></h3><ul class="list"><li data-t="no1"></li><li data-t="no2"></li><li data-t="no3"></li></ul></div>
+      </div>
+      <div class="card">
+        <h3 data-t="try_h"></h3>
+        <p data-t="try_p"></p>
+        <div class="cta"><a class="primary" href="index.html" id="cta-calc" data-t="cta_calc"></a><a href="https://github.com/" id="cta-repo" data-t="cta_repo" hidden></a></div>
+      </div>
+      <p class="source" data-t="cite"></p>
+    </section>
+  </main>
+
+  <nav class="pager" aria-label="Tour" data-aria="nav_tour">
+    <button type="button" id="prev" data-t="prev"></button>
+    <span class="hint" id="pos" aria-live="polite"></span>
+    <button type="button" class="primary" id="next" data-t="next"></button>
+  </nav>
+</div>
+
+<script src="chli-core.js"></script>
+<script src="example-data.js"></script>
+<script>
+(function () {
+  "use strict";
+  const I18N = {
+    en: {
+      brand: "Centenarians Healthy Longevity Index · guided tour",
+      chapters: ["Why", "Domains", "One scale", "Agreement", "Domain scores", "The index", "Groups", "Robustness", "Uses"],
+      prev: "← Back", next: "Next →", last: "Open the calculator", pos: "Chapter {i} of {n} · the ← → keys move between chapters",
+      simulated: "simulated data",
+      src_article: "Figures from the article: Colombian centenarian cohort, 163 participants.",
+      k1: "1 · Why an index", t1: "Living to 100 does not mean aging the same way",
+      l1: "Some centenarians walk, cook and remember well; others depend on help for daily life. The CHLI puts that variety into numbers, using information that a cohort study usually collects, so that groups can be described and compared.",
+      why_a_h: "Many dimensions", why_a: "Healthy aging is physical, mental, metabolic and molecular. No single test captures it.",
+      why_b_h: "One transparent summary", why_b: "The index combines four domains with a published, auditable method. Every decision (which variable stays, how much it weighs) is shown.",
+      why_c_h: "Built in each cohort", why_c: "The index is rebuilt in every cohort that uses it. It describes participants relative to their own cohort, not against a fixed standard.",
+      flow: ["Variables", "Same scale", "Agreement check", "4 domain scores", "Index", "Groups"],
+      k2: "2 · What goes in", t2: "Four domains of aging, 23 variables",
+      l2: "The article used the information collected in the Colombian centenarian cohort, organized in four domains. Another cohort can use its own variables, as long as each one belongs clearly to a domain.",
+      doms: [
+        ["D1", "Physical function", "Reflective", ["Barthel index", "Lawton-Brody scale", "SPPB", "Handgrip strength", "Frailty", "Sarcopenia"]],
+        ["D2", "Molecular biological aging", "Formative", ["Mitochondrial DNA copy number", "Telomere length", "Phenotypic age (residual)"]],
+        ["D3", "Cognitive-psychological status", "Reflective", ["MMSE", "CDR", "Yesavage depression scale", "Life satisfaction (SWLS)", "Insomnia (ISI)", "Anxiety (GAI-SF)"]],
+        ["D4", "Metabolic-nutritional status", "Reflective", ["MNA", "BMI (distance to optimum)", "Hemoglobin", "Albumin", "CRP", "Vitamin D", "Vitamin B12", "Creatinine"]],
+      ],
+      k3: "3 · One scale", t3: "Put every variable on the same scale, pointing the same way",
+      l3: "Grip strength is in kilograms and the Barthel index in points. Each variable is standardized (z-score: 0 is the cohort average, ±1 is one standard deviation). Scales where a high value is worse, such as frailty, are flipped, so that higher always means healthier.",
+      pick_var: "Variable:", raw_h: "As measured", z_h: "Standardized, higher = healthier",
+      raw_note: "Units of the original scale.", z_note_up: "Same shape, now centered at 0.", z_note_down: "Flipped: in this scale a high value meant worse health.",
+      vars: { barthel: "Barthel index (points)", handgrip_kg: "Handgrip strength (kg)", frailty: "Frailty score (higher = frailer)", bmi: "BMI (kg/m²): distance to 24" },
+      k4: "4 · Do the variables agree?", t4: "Keep only the variables that agree with their domain",
+      l4: "In a reflective domain all variables should rise and fall together. For each one, the method measures its correlation with the sum of the others (corrected item-total correlation, Spearman). Variables below 0.20 are set aside, once.",
+      pick_dom: "Domain:", thr_lbl: "Threshold:", thr_help: "Moving the threshold shows which variables would be set aside and how the internal consistency changes. The published method uses 0.20.",
+      kept: "kept", set_aside: "set aside",
+      alpha_h: "Internal consistency", alpha_now: "Cronbach's alpha with the variables kept:",
+      alpha_expl: "Alpha measures how much the variables of a domain agree. Removing a variable that does not agree usually raises it.",
+      screen_article: "In the article the check set aside 4 of 23 variables: anxiety (GAI-SF) from D3, and vitamin D, vitamin B12 and creatinine from D4. Alpha rose from 0.691 to 0.768 in D3 and from 0.471 to 0.625 in D4.",
+      k5: "5 · One score per domain", t5: "Summarize each domain in one score",
+      l5: "The variables that remain are combined by principal component analysis: it finds the weighting that keeps as much of their shared information as possible. Variables that agree more with the rest weigh more.",
+      weights_h: "Weight of each variable in D1", pca_article_h: "In the article: information kept by one score",
+      pca_article: "Share of the variance of each domain captured by its first principal component. A higher share means the variables of the domain move more closely together.",
+      formative_expl: "D2 is different: telomeres, mitochondrial DNA and phenotypic age measure distinct processes, so they are not expected to agree (alpha 0.137 in the article). D2 is their simple average, with no screening.",
+      k6: "6 · The index", t6: "Average the four domains: that is the CHLI",
+      l6: "The four domain scores are averaged with equal weights, so no domain dominates because it has more variables, and the result is standardized again. The slider steps through different simulated participants.",
+      who_lbl: "Participant, ordered from lowest to highest index:",
+      who_out: "CHLI {v}", who_rank: "Position {r} of {n} in this cohort", who_group: "Group by thirds:",
+      index_formula: "CHLI = z( (D1 + D2 + D3 + D4) / 4 ). The value only has meaning inside the cohort where it was built.",
+      k7: "7 · Groups", t7: "Group participants by their index",
+      l7: "For comparisons, the cohort can be split at the median of the index (two groups) or into thirds (three groups). The groups are relative to the cohort: “Healthy” is the half or third with the higher index among these participants, and “Non-healthy” the half or third with the lower index.",
+      split_lbl: "Split:", split_med: "at the median", split_tert: "into thirds",
+      ph_note_med: "Median split: {h} Healthy and {d} Non-healthy participants.",
+      ph_note_tert: "Thirds: {h} Healthy, {i} Intermediate and {d} Non-healthy participants.",
+      ph_article_h: "In the article: split at the median",
+      ph_article: "The median split is the one used in the article's analyses.",
+      k8: "8 · Is it robust?", t8: "Different reasonable choices give the same ranking",
+      l8: "A useful index should not depend on one arbitrary decision. The article checked what happens when the four domains are weighted by a second principal component, or when one domain is left out.",
+      rob1: "Spearman correlation between the CHLI and an index that weights the domains by a second-level principal component (which explains 51.0% of their variance).",
+      rob2: "Correlation between the full CHLI and the CHLI built without the molecular domain (D2).",
+      rob3: "Range of correlations between domains: related, but each adds its own information.",
+      k9: "9 · What it is for", t9: "What the CHLI is useful for, and what it is not",
+      l9: "The CHLI is an instrument for characterizing phenotypes. It turns many measurements into one transparent summary and a few groups that can be compared.",
+      use_yes_h: "Useful for", use1: "Describing how varied healthy aging is in an extreme-longevity cohort.",
+      use2: "Defining groups (Healthy and Non-healthy) to compare other data between them, for example molecular or metabolomic profiles.",
+      use3: "Repeating the method in other cohorts to test whether the same domains and patterns appear (external validation).",
+      use4: "Reporting every decision of the method, so that others can audit it.",
+      use_no_h: "Not meant for",
+      no1: "Diagnosing or predicting the outcome of an individual person.",
+      no2: "Comparing scores between cohorts: each index is relative to its own cohort.",
+      no3: "Replacing clinical judgement. In the article, the physical function domain (D1) alone discriminated mortality as well as the full index (optimism-corrected c-index 0.745 for both).",
+      try_h: "Use with data from other cohorts", try_p: "The calculator runs in the browser: the data never leave the computer. There is also a Python package with the same method and numbers.",
+      cta_calc: "Open the calculator", cta_repo: "Code and documentation",
+      cite: "Aya V, et al. The Centenarians Healthy Longevity Index: a multidimensional framework for phenotypic characterization of successful aging. Manuscript in preparation.",
+      ph: { Healthy: "Healthy", Intermediate: "Intermediate", "Non-healthy": "Non-healthy" },
+      lab_h: "Healthy", lab_nh: "Non-healthy", nav_chapters: "Chapters", nav_steps: "Steps", nav_tour: "Tour",
+    },
+    es: {
+      brand: "Índice de Longevidad Saludable en Centenarios · recorrido guiado",
+      chapters: ["Por qué", "Dominios", "Una escala", "Concordancia", "Puntajes", "El índice", "Grupos", "Robustez", "Usos"],
+      prev: "← Atrás", next: "Siguiente →", last: "Abrir la calculadora", pos: "Capítulo {i} de {n} · las teclas ← → cambian de capítulo",
+      simulated: "datos simulados",
+      src_article: "Cifras del artículo: cohorte colombiana de centenarios, 163 participantes.",
+      k1: "1 · Por qué un índice", t1: "Llegar a los 100 años no significa envejecer igual",
+      l1: "Algunos centenarios caminan, cocinan y recuerdan bien; otros dependen de ayuda para la vida diaria. El CHLI convierte esa variedad en números, con información que un estudio de cohorte suele recoger, para poder describir y comparar grupos.",
+      why_a_h: "Muchas dimensiones", why_a: "El envejecimiento saludable es físico, mental, metabólico y molecular. Ninguna prueba sola lo captura.",
+      why_b_h: "Un resumen transparente", why_b: "El índice combina cuatro dominios con un método publicado y auditable. Cada decisión (qué variable se queda, cuánto pesa) queda a la vista.",
+      why_c_h: "Se construye en cada cohorte", why_c: "El índice se vuelve a construir en cada cohorte que lo usa. Describe a los participantes en relación con su propia cohorte, no contra un estándar fijo.",
+      flow: ["Variables", "Misma escala", "Concordancia", "4 puntajes de dominio", "Índice", "Grupos"],
+      k2: "2 · Qué entra", t2: "Cuatro dominios del envejecimiento, 23 variables",
+      l2: "El artículo usó la información recogida en la cohorte colombiana de centenarios, organizada en cuatro dominios. Otra cohorte puede usar sus propias variables, siempre que cada una pertenezca claramente a un dominio.",
+      doms: [
+        ["D1", "Función física", "Reflexivo", ["Índice de Barthel", "Escala de Lawton-Brody", "SPPB", "Fuerza de prensión", "Fragilidad", "Sarcopenia"]],
+        ["D2", "Envejecimiento biológico molecular", "Formativo", ["Número de copias de ADN mitocondrial", "Longitud telomérica", "Edad fenotípica (residuo)"]],
+        ["D3", "Estado cognitivo-psicológico", "Reflexivo", ["MMSE", "CDR", "Escala de depresión de Yesavage", "Satisfacción con la vida (SWLS)", "Insomnio (ISI)", "Ansiedad (GAI-SF)"]],
+        ["D4", "Estado metabólico-nutricional", "Reflexivo", ["MNA", "IMC (distancia al óptimo)", "Hemoglobina", "Albúmina", "PCR", "Vitamina D", "Vitamina B12", "Creatinina"]],
+      ],
+      k3: "3 · Una escala", t3: "Llevar todas las variables a la misma escala y en la misma dirección",
+      l3: "La fuerza de prensión se mide en kilogramos y el índice de Barthel en puntos. Cada variable se estandariza (puntaje z: 0 es el promedio de la cohorte y ±1 es una desviación estándar). Las escalas en las que un valor alto es peor, como la fragilidad, se invierten, para que más alto siempre signifique más saludable.",
+      pick_var: "Variable:", raw_h: "Tal como se midió", z_h: "Estandarizada, más alto = más saludable",
+      raw_note: "Unidades de la escala original.", z_note_up: "La misma forma, ahora centrada en 0.", z_note_down: "Invertida: en esta escala un valor alto significaba peor salud.",
+      vars: { barthel: "Índice de Barthel (puntos)", handgrip_kg: "Fuerza de prensión (kg)", frailty: "Fragilidad (más alto = más frágil)", bmi: "IMC (kg/m²): distancia a 24" },
+      k4: "4 · ¿Concuerdan las variables?", t4: "Conservar solo las variables que concuerdan con su dominio",
+      l4: "En un dominio reflexivo todas las variables deberían subir y bajar juntas. Para cada una, el método mide su correlación con la suma de las demás (correlación ítem-total corregida, de Spearman). Las que quedan por debajo de 0,20 se apartan, una sola vez.",
+      pick_dom: "Dominio:", thr_lbl: "Umbral:", thr_help: "Al mover el umbral se ve qué variables se apartarían y cómo cambia la consistencia interna. El método publicado usa 0,20.",
+      kept: "se conserva", set_aside: "se aparta",
+      alpha_h: "Consistencia interna", alpha_now: "Alfa de Cronbach con las variables conservadas:",
+      alpha_expl: "Alfa mide cuánto concuerdan las variables de un dominio. Retirar una variable que no concuerda suele aumentarlo.",
+      screen_article: "En el artículo la comprobación apartó 4 de las 23 variables: ansiedad (GAI-SF) en D3, y vitamina D, vitamina B12 y creatinina en D4. Alfa subió de 0,691 a 0,768 en D3 y de 0,471 a 0,625 en D4.",
+      k5: "5 · Un puntaje por dominio", t5: "Resumir cada dominio en un puntaje",
+      l5: "Las variables que quedan se combinan con un análisis de componentes principales: encuentra la ponderación que conserva la mayor parte posible de la información que comparten. Las variables que más concuerdan con el resto pesan más.",
+      weights_h: "Peso de cada variable en D1", pca_article_h: "En el artículo: información que conserva un solo puntaje",
+      pca_article: "Proporción de la varianza de cada dominio que captura su primera componente principal. Una proporción mayor indica que las variables del dominio se mueven más juntas.",
+      formative_expl: "D2 es distinto: los telómeros, el ADN mitocondrial y la edad fenotípica miden procesos diferentes, así que no se espera que concuerden (alfa 0,137 en el artículo). D2 es su promedio simple, sin cribado.",
+      k6: "6 · El índice", t6: "Promediar los cuatro dominios: eso es el CHLI",
+      l6: "Los cuatro puntajes de dominio se promedian con pesos iguales, para que ningún dominio domine por tener más variables, y el resultado se vuelve a estandarizar. El control permite recorrer distintos participantes simulados.",
+      who_lbl: "Participante, ordenados de menor a mayor índice:",
+      who_out: "CHLI {v}", who_rank: "Posición {r} de {n} en esta cohorte", who_group: "Grupo por terciles:",
+      index_formula: "CHLI = z( (D1 + D2 + D3 + D4) / 4 ). El valor solo tiene sentido dentro de la cohorte en la que se construyó.",
+      k7: "7 · Grupos", t7: "Agrupar a los participantes según su índice",
+      l7: "Para comparar, la cohorte puede dividirse en la mediana del índice (dos grupos) o en terciles (tres grupos). Los grupos son relativos a la cohorte: el grupo «Saludable» (Healthy) es la mitad o el tercio con mejor índice entre estos participantes, y el grupo «No saludable» (Non-healthy), la mitad o el tercio con menor índice.",
+      split_lbl: "División:", split_med: "en la mediana", split_tert: "en terciles",
+      ph_note_med: "Partición por la mediana: {h} participantes en el grupo Saludable y {d} en el grupo No saludable.",
+      ph_note_tert: "Terciles: {h} en el grupo Saludable, {i} en Intermedio y {d} en No saludable.",
+      ph_article_h: "En el artículo: partición por la mediana",
+      ph_article: "La partición por la mediana es la que usan los análisis del artículo.",
+      k8: "8 · ¿Es robusto?", t8: "Otras decisiones razonables dan el mismo ordenamiento",
+      l8: "Un índice útil no debería depender de una decisión arbitraria. El artículo comprobó qué pasa si los cuatro dominios se ponderan con una segunda componente principal, o si se deja fuera un dominio.",
+      rob1: "Correlación de Spearman entre el CHLI y un índice que pondera los dominios con una componente principal de segundo nivel (que explica el 51,0 % de su varianza).",
+      rob2: "Correlación entre el CHLI completo y el CHLI construido sin el dominio molecular (D2).",
+      rob3: "Rango de las correlaciones entre dominios: relacionados, pero cada uno aporta información propia.",
+      k9: "9 · Para qué sirve", t9: "Para qué sirve el CHLI y para qué no",
+      l9: "El CHLI es un instrumento para caracterizar fenotipos. Convierte muchas mediciones en un resumen transparente y unos pocos grupos que se pueden comparar.",
+      use_yes_h: "Sirve para", use1: "Describir qué tan variado es el envejecimiento saludable en una cohorte de longevidad extrema.",
+      use2: "Definir grupos (Saludable y No saludable) para comparar otros datos entre ellos, por ejemplo perfiles moleculares o metabolómicos.",
+      use3: "Repetir el método en otras cohortes para comprobar si aparecen los mismos dominios y patrones (validación externa).",
+      use4: "Informar cada decisión del método, para que otros puedan auditarla.",
+      use_no_h: "No está pensado para",
+      no1: "Diagnosticar ni predecir el desenlace de una persona.",
+      no2: "Comparar puntajes entre cohortes: cada índice es relativo a su propia cohorte.",
+      no3: "Reemplazar el juicio clínico. En el artículo, el dominio de función física (D1) por sí solo discriminó la mortalidad igual que el índice completo (c-index corregido de 0,745 en ambos).",
+      try_h: "Uso con datos de otras cohortes", try_p: "La calculadora funciona en el navegador: los datos nunca salen del computador. También hay un paquete de Python con el mismo método y los mismos números.",
+      cta_calc: "Abrir la calculadora", cta_repo: "Código y documentación",
+      cite: "Aya V, et al. The Centenarians Healthy Longevity Index: a multidimensional framework for phenotypic characterization of successful aging. Manuscrito en preparación.",
+      ph: { Healthy: "Saludable", Intermediate: "Intermedio", "Non-healthy": "No saludable" },
+      lab_h: "Saludable", lab_nh: "No saludable", nav_chapters: "Capítulos", nav_steps: "Pasos", nav_tour: "Recorrido",
+    },
+  };
+
+  const ES_NAMES = { "Barthel index": "Índice de Barthel", "Lawton-Brody scale": "Escala de Lawton-Brody", "Handgrip dynamometry": "Dinamometría",
+    "Frailty score": "Fragilidad", "Sarcopenia classification": "Sarcopenia", "Yesavage GDS": "GDS de Yesavage", "Short anxiety scale": "Ansiedad (escala breve)",
+    "BMI, distance to optimum": "IMC (distancia al óptimo)", "Hemoglobin": "Hemoglobina", "Serum albumin": "Albúmina", "CRP": "PCR", "Vitamin B12": "Vitamina B12" };
+  const $ = (id) => document.getElementById(id);
+  const S = CHLI.stats;
+  const state = { lang: "en", ch: 0 };
+  const T = (k, v) => { let s = I18N[state.lang][k] ?? I18N.en[k] ?? k; if (v && typeof s === "string") for (const [a, b] of Object.entries(v)) s = s.split(`{${a}}`).join(b); return s; };
+  const nm = (s) => (state.lang === "es" && ES_NAMES[s]) || s;
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmt = (v, d = 2) => (Number.isFinite(v) ? v.toFixed(d) : "—").replace(".", state.lang === "es" ? "," : ".").replace("-", "−");
+  const DC = ["var(--d1)", "var(--d2)", "var(--d3)", "var(--d4)"];
+  const chapters = [...document.querySelectorAll(".chapter")];
+
+  // ------------------------------------------------------------ data: the simulated example, run through the real pipeline
+  const EX = window.CHLI_EXAMPLE, rows = CHLI.parseCSV(EX.csv).rows, cfg = EX.config;
+  const res = CHLI.build(rows, cfg, "id");
+  const num = (col) => rows.map((r) => CHLI.parseNumber(r[col])[0]);
+  const itemOf = (col) => cfg.domains.flatMap((d) => d.items).find((i) => i.column === col);
+  function prepared(it) { let x = num(it.column); if (it.transform === "neg_abs_distance") x = x.map((v) => -Math.abs(v - it.target)); return S.zscore(x.map((v) => (it.polarity || 1) * v)); }
+
+  // ------------------------------------------------------------ small chart helpers (SVG)
+  function histogram(values, opts) {
+    const W = 460, H = opts.h || 170, P = { l: 30, r: 10, t: 10, b: 26 }, v = values.filter(Number.isFinite);
+    const mn = opts.min ?? Math.min(...v), mx = opts.max ?? Math.max(...v), nb = opts.bins || 18, w = (mx - mn) / nb || 1;
+    const counts = new Array(nb).fill(0), cls = new Array(nb).fill(null);
+    v.forEach((x) => { const i = Math.min(nb - 1, Math.max(0, Math.floor((x - mn) / w))); counts[i]++; });
+    const cmax = Math.max(...counts, 1), X = (x) => P.l + ((x - mn) / (mx - mn || 1)) * (W - P.l - P.r), Y = (c) => H - P.b - (c / cmax) * (H - P.t - P.b);
+    let g = "";
+    counts.forEach((c, i) => {
+      const x0 = X(mn + i * w), x1 = X(mn + (i + 1) * w), mid = mn + (i + 0.5) * w;
+      const fill = opts.colorAt ? opts.colorAt(mid) : (opts.color || "var(--accent)");
+      g += `<rect x="${x0 + 0.5}" y="${Y(c)}" width="${Math.max(0, x1 - x0 - 1)}" height="${H - P.b - Y(c)}" fill="${fill}" opacity="0.85"></rect>`;
+    });
+    (opts.lines || []).forEach(([x, col, dash]) => { g += `<line x1="${X(x)}" x2="${X(x)}" y1="${P.t}" y2="${H - P.b}" stroke="${col}" stroke-width="2" stroke-dasharray="${dash || ""}"></line>`; });
+    const ticks = [[mn, "start"], [(mn + mx) / 2, "middle"], [mx, "end"]].map(([x, a]) => `<text x="${X(x)}" y="${H - 7}" text-anchor="${a}">${fmt(x, opts.dec ?? 1)}</text>`).join("");
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label)}"><line x1="${P.l}" x2="${W - P.r}" y1="${H - P.b}" y2="${H - P.b}" stroke="var(--line)"></line>${g}${ticks}</svg>`;
+  }
+  function hbars(items, opts) { // items: [label, value, color]
+    const W = 460, rowH = 30, L = opts.labelW || 170, H = items.length * rowH + 22, max = opts.max || Math.max(...items.map((i) => Math.abs(i[1])), 0.01);
+    const X = (v) => L + (Math.min(Math.abs(v), max) / max) * (W - L - 56);
+    let g = "";
+    items.forEach(([lab, v, col], i) => {
+      const y = 6 + i * rowH;
+      g += `<text class="lbl" x="${L - 8}" y="${y + 16}" text-anchor="end">${esc(lab)}</text><rect x="${L}" y="${y + 5}" width="${Math.max(1, X(Math.max(0, v)) - L)}" height="16" rx="4" fill="${col}"></rect><text x="${X(Math.max(0, v)) + 6}" y="${y + 17}">${fmt(v, opts.dec ?? 2)}</text>`;
+    });
+    if (opts.threshold !== undefined) { const x = X(opts.threshold); g += `<line x1="${x}" x2="${x}" y1="2" y2="${H - 14}" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="4 3"></line><text x="${x}" y="${H - 2}" text-anchor="middle">${fmt(opts.threshold, 2)}</text>`; }
+    return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.label)}">${g}</svg>`;
+  }
+
+  // ------------------------------------------------------------ chapters
+  function renderFlow() {
+    $("flow1").innerHTML = T("flow").map((s, i) => `${i ? "<i aria-hidden=\"true\">→</i>" : ""}<span class="step${i === 4 ? " on" : ""}">${esc(s)}</span>`).join("");
+  }
+  function renderDomains() {
+    $("domcards").innerHTML = T("doms").map(([id, lab, type, vars], i) => `<div class="card dom" style="--c:${DC[i]}"><span class="tag">${esc(type)}</span><h3>${esc(id)} · ${esc(lab)}</h3><ul class="list small">${vars.map((v) => `<li>${esc(v)}</li>`).join("")}</ul></div>`).join("");
+  }
+  const SCALE_VARS = ["barthel", "handgrip_kg", "frailty", "bmi"];
+  function renderScale() {
+    const sel = $("sel-var"), cur = sel.value || "handgrip_kg";
+    sel.innerHTML = SCALE_VARS.map((c) => `<option value="${c}"${c === cur ? " selected" : ""}>${esc(T("vars")[c])}</option>`).join("");
+    const it = itemOf(cur), raw = num(cur), z = prepared(it);
+    $("hist-raw").innerHTML = histogram(raw, { label: T("raw_h"), color: "var(--grey)", dec: 0 });
+    $("hist-z").innerHTML = histogram(z, { label: T("z_h"), min: -3.5, max: 3.5, lines: [[0, "var(--ink)", "3 3"]] });
+    $("raw-note").textContent = T("raw_note");
+    $("z-note").textContent = it.polarity === -1 || it.transform ? T("z_note_down") : T("z_note_up");
+  }
+  function renderScreen() {
+    const sel = $("sel-scr"), cur = sel.value || "D3";
+    const refl = cfg.domains.filter((d) => d.type === "reflective");
+    sel.innerHTML = refl.map((d) => `<option value="${d.id}"${d.id === cur ? " selected" : ""}>${esc(d.id)}</option>`).join("");
+    const dom = cfg.domains.find((d) => d.id === cur), names = dom.items.map((i) => i.name), X = dom.items.map(prepared);
+    const it = S.itemTotal(X, names, "spearman"), thr = +$("thr").value;
+    $("thr-v").textContent = fmt(thr, 2);
+    const items = names.map((n) => [nm(n), it[n], it[n] >= thr ? "var(--accent)" : "var(--grey)"]).sort((a, b) => b[1] - a[1]);
+    $("itbars").innerHTML = hbars(items, { max: 0.8, threshold: thr, label: T("t4") });
+    const keep = X.filter((_, j) => it[names[j]] >= thr);
+    $("alpha-v").textContent = keep.length >= 2 ? fmt(S.cronbachAlpha(keep), 3) : "—";
+  }
+  function renderPCA() {
+    const w = res.report.domains.D1.weights;
+    $("wbars").innerHTML = hbars(Object.entries(w).map(([n, v]) => [nm(n), v, "var(--d1)"]), { label: T("weights_h"), dec: 2 });
+  }
+  const order = res.scores.map((s, i) => [s.CHLI, i]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  function renderIndex() {
+    const k = +$("who").value, i = order[k], s = res.scores[i];
+    const labs = cfg.domains.map((d) => `${d.id}`);
+    const W = 460, H = 4 * 40 + 20, L = 40, mid = L + (W - L - 20) / 2, sc = (W - L - 20) / 2 / 3;
+    let g = `<line x1="${mid}" x2="${mid}" y1="0" y2="${H - 16}" stroke="var(--line)"></line>`;
+    labs.forEach((d, j) => {
+      const v = Math.max(-3, Math.min(3, s[d])), y = 8 + j * 40, x0 = v < 0 ? mid + v * sc : mid;
+      g += `<text class="lbl" x="${L - 8}" y="${y + 18}" text-anchor="end">${d}</text><rect x="${x0}" y="${y + 6}" width="${Math.abs(v) * sc}" height="18" rx="4" fill="${DC[j]}"></rect><text x="${v < 0 ? x0 - 6 : x0 + Math.abs(v) * sc + 6}" y="${y + 19}" text-anchor="${v < 0 ? "end" : "start"}">${fmt(s[d], 2)}</text>`;
+    });
+    g += `<text x="${mid - 3 * sc}" y="${H - 2}" text-anchor="start">−3</text><text x="${mid}" y="${H - 2}" text-anchor="middle">0</text><text x="${mid + 3 * sc}" y="${H - 2}" text-anchor="end">+3</text>`;
+    $("profile").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(labs.map((d) => `${d} ${fmt(s[d], 2)}`).join(", "))}">${g}</svg>`;
+    $("who-out").innerHTML = `<span class="big">${esc(T("who_out", { v: fmt(s.CHLI, 2) }))}</span><span class="small muted">${esc(T("who_rank", { r: k + 1, n: order.length }))}</span><span>${esc(T("who_group"))} <span class="pheno">${esc(T("ph")[s.phenotype_tertile])}</span></span>`;
+    $("who").setAttribute("aria-valuetext", `${T("who_out", { v: fmt(s.CHLI, 2) })}; ${T("ph")[s.phenotype_tertile]}`);
+  }
+  function renderPheno() {
+    const mode = document.querySelector('input[name="split"]:checked').value, r = res.report.phenotypes, v = res.scores.map((s) => s.CHLI_equal);
+    const colorAt = mode === "median" ? (x) => (x >= r.median_cutpoint ? "var(--accent)" : "var(--d4)")
+      : (x) => (x >= r.tertile_cutpoints.P67 ? "var(--accent)" : x <= r.tertile_cutpoints.P33 ? "var(--d4)" : "var(--grey)");
+    const lines = mode === "median" ? [[r.median_cutpoint, "var(--ink)", "3 3"]] : [[r.tertile_cutpoints.P33, "var(--ink)", "5 4"], [r.tertile_cutpoints.P67, "var(--ink)", "5 4"]];
+    $("hist-ph").innerHTML = histogram(v, { label: T("t7"), colorAt, lines, bins: 24, dec: 1 });
+    const tc = r.tertile_counts, mc = r.median_counts;
+    $("ph-note").textContent = mode === "median" ? T("ph_note_med", { h: mc.Healthy, d: mc["Non-healthy"] }) : T("ph_note_tert", { h: tc.Healthy, i: tc.Intermediate, d: tc["Non-healthy"] });
+  }
+
+  // ------------------------------------------------------------ language and navigation
+  function setLang(lang, save) {
+    state.lang = lang === "es" ? "es" : "en";
+    document.documentElement.lang = state.lang;
+    document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === state.lang)));
+    document.querySelectorAll("[data-t]").forEach((el) => { el.textContent = T(el.dataset.t); });
+    document.querySelectorAll(".fact .big").forEach((el) => { el.textContent = el.textContent.replace(/(\d)[.,](\d)/g, `$1${state.lang === "es" ? "," : "."}$2`).replace(/(\d)\s?%/g, state.lang === "es" ? "$1\u00a0%" : "$1%"); });
+    document.querySelectorAll("[data-aria]").forEach((el) => el.setAttribute("aria-label", T(el.dataset.aria)));
+    document.querySelectorAll(".chapter .card > .big").forEach((el) => { el.textContent = el.textContent.replace(/(\d)[.,](\d)/g, `$1${state.lang === "es" ? "," : "."}$2`); });
+    $("cta-calc").href = `index.html?lang=${state.lang}`;
+    document.title = state.lang === "es" ? "CHLI · recorrido guiado" : "CHLI · guided tour";
+    if (save) try { localStorage.setItem("chli-lang", state.lang); } catch (e) { /* storage unavailable */ }
+    renderFlow(); renderDomains(); renderScale(); renderScreen(); renderPCA(); renderIndex(); renderPheno(); renderNav();
+  }
+  function renderNav() {
+    const n = chapters.length, names = T("chapters");
+    $("dots").innerHTML = names.map((nm, i) => `<li><button type="button" data-go="${i}"${i === state.ch ? ' aria-current="step"' : ""}>${i + 1}. ${esc(nm)}</button></li>`).join("");
+    $("bar").style.width = `${(100 * (state.ch + 1)) / n}%`;
+    $("prev").disabled = state.ch === 0;
+    $("next").textContent = state.ch === n - 1 ? T("last") : T("next");
+    $("pos").textContent = T("pos", { i: state.ch + 1, n });
+  }
+  function go(i, focus) {
+    state.ch = Math.max(0, Math.min(chapters.length - 1, i));
+    chapters.forEach((c, j) => { c.hidden = j !== state.ch; });
+    renderNav();
+    try { history.replaceState(null, "", `#${state.ch + 1}`); } catch (e) { /* file:// or sandbox */ }
+    if (focus) { const h = chapters[state.ch].querySelector("h2"); h && h.focus({ preventScroll: true }); window.scrollTo({ top: 0 }); }
+  }
+  $("dots").addEventListener("click", (e) => { const b = e.target.closest("[data-go]"); if (b) go(+b.dataset.go, true); });
+  $("prev").addEventListener("click", () => go(state.ch - 1, true));
+  $("next").addEventListener("click", () => { if (state.ch === chapters.length - 1) location.href = $("cta-calc").href; else go(state.ch + 1, true); });
+  document.addEventListener("keydown", (e) => {
+    if (e.altKey || e.ctrlKey || e.metaKey || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    if (e.key === "ArrowRight" || e.key === "PageDown") { e.preventDefault(); go(state.ch + 1, true); }
+    if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(state.ch - 1, true); }
+  });
+  document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => setLang(b.dataset.lang, true)));
+  $("sel-var").addEventListener("change", renderScale);
+  $("sel-scr").addEventListener("change", renderScreen);
+  $("thr").addEventListener("input", renderScreen);
+  $("who").addEventListener("input", renderIndex);
+  document.querySelectorAll('input[name="split"]').forEach((r) => r.addEventListener("change", renderPheno));
+  $("who").max = String(order.length - 1);
+
+  let saved = null; try { saved = localStorage.getItem("chli-lang"); } catch (e) { /* storage unavailable */ }
+  const q = new URLSearchParams(location.search).get("lang");
+  const lang = q === "es" || q === "en" ? q : saved || ((navigator.language || "").toLowerCase().startsWith("es") ? "es" : "en");
+  const start = parseInt((location.hash || "").slice(1), 10);
+  setLang(lang, false);
+  go(Number.isFinite(start) ? start - 1 : 0, false);
+})();
+</script>
+</body>
+</html>

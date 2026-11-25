@@ -1,0 +1,51 @@
+cff-version: 1.2.0
+message: "If you use the CHLI, please cite the article below."
+title: "CHLI: Centenarians Healthy Longevity Index"
+version: 1.0.0
+type: software
+license: MIT
+# The repository URL and the Zenodo DOI are added when the repository is published.
+authors:
+  - family-names: Aya
+    given-names: Viviana
+    affiliation: "MetCore - Metabolomics Core Facility, Universidad de los Andes, Bogotá, Colombia"
+  - family-names: Mercado Solorzano
+    given-names: Natali
+    affiliation: "MetCore - Metabolomics Core Facility, Universidad de los Andes, Bogotá, Colombia"
+  - family-names: Anaya
+    given-names: Juan-Manuel
+    affiliation: "Colombian Centenarians Alliance; Healthy Longevity Center, Universidad de la Costa, Colombia"
+    orcid: "https://orcid.org/0000-0002-6444-1249"
+preferred-citation:
+  type: article
+  title: "The Centenarians Healthy Longevity Index: A Multidimensional Framework for Phenotypic Characterization of Successful Aging"
+  status: in-preparation
+  year: 2026
+  authors:
+    - family-names: Aya
+      given-names: Viviana
+    - family-names: Mercado Solorzano
+      given-names: Natali
+    - family-names: Díaz Gutiérrez
+      given-names: María José
+    - family-names: Torres
+      given-names: Isaura Patricia
+    - family-names: Osorio-Solórzano
+      given-names: Miguel
+    - family-names: Gil-Castaño
+      given-names: Simón
+    - family-names: Gómez
+      given-names: Oscar Mauricio
+    - family-names: Castelblanco-Toro
+      given-names: Sandra Milena
+    - family-names: Cadena Bonfanti
+      given-names: Andres Angelo
+    - family-names: Gallo
+      given-names: Juan Esteban
+    - family-names: Pardo
+      given-names: Daniel
+    - family-names: Cala Molina
+      given-names: Mónica P.
+    - family-names: Anaya
+      given-names: Juan-Manuel
+      orcid: "https://orcid.org/0000-0002-6444-1249"

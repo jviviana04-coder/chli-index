@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important} body{margin:0} img{max-width:100%}</style>
+<title>CHLI Builder</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<style>
+/* Layout: a single working column; three steps run top to bottom (data → domains → results).
+   The four domain colors carry through every chart and card edge. Text lives in the
+   I18N dictionary of the script (English and Spanish). */
+:root {
+  --bg: #f6f8f7; --surface: #ffffff; --ink: #18211e; --muted: #56625e; --line: #d9e1de; --field: #7b8883;
+  --accent: #1f6f5c; --accent-ink: #ffffff; --soft: #e8f0ed;
+  --d1: #1b7f5f; --d2: #2d4b9a; --d3: #6a52a3; --d4: #b5532a;
+  --ok: #1f7a4d; --warn: #855b00; --bad: #b42318; --warn-bg: #fff4d6; --bad-bg: #fde8e6; --ok-bg: #e3f4ea;
+  --f-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111816; --surface: #18211e; --ink: #e6eeeb; --muted: #a3b0ab; --line: #2c3834; --field: #6e7d78;
+  --accent: #5cc3a5; --accent-ink: #0d1412; --soft: #1f2b27;
+  --d1: #4cc49a; --d2: #7f9ef0; --d3: #b29cf0; --d4: #f08a5d;
+  --ok: #6fd39c; --warn: #f2c24b; --bad: #ff8a80; --warn-bg: #3a3014; --bad-bg: #3d1d1a; --ok-bg: #173527;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #111816; --surface: #18211e; --ink: #e6eeeb; --muted: #a3b0ab; --line: #2c3834; --field: #6e7d78;
+  --accent: #5cc3a5; --accent-ink: #0d1412; --soft: #1f2b27;
+  --d1: #4cc49a; --d2: #7f9ef0; --d3: #b29cf0; --d4: #f08a5d;
+  --ok: #6fd39c; --warn: #f2c24b; --bad: #ff8a80; --warn-bg: #3a3014; --bad-bg: #3d1d1a; --ok-bg: #173527;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 24px 56px; display: grid; gap: 30px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: clamp(1.7rem, 4vw, 2.3rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.3rem; font-weight: 600; }
+h3 { font-size: 1rem; font-weight: 600; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 70ch; }
+.mono, td.num, .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+a { color: var(--accent); }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; border-radius: 6px; border: 1px solid var(--field); background: var(--surface); padding: 7px 12px; min-height: 38px; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; padding-inline: 18px; }
+button.link { border: none; background: none; padding: 4px 2px; min-height: 0; color: var(--accent); text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+select, input[type="text"], input[type="number"] { background: var(--surface); border: 1px solid var(--field); border-radius: 6px; padding: 6px 8px; min-width: 0; min-height: 36px; }
+input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--accent); }
+input[type="file"] { max-width: 100%; min-width: 0; }
+@media (pointer: coarse) { button, select, input[type="text"], input[type="number"] { min-height: 44px; } }
+
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.eyebrow { font: 600 0.75rem/1 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.lang { display: inline-flex; border: 1px solid var(--field); border-radius: 999px; overflow: hidden; }
+.lang button { border: none; border-radius: 0; min-height: 34px; padding: 4px 14px; background: transparent; font-size: 0.85rem; font-weight: 600; }
+.lang button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.lang button:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; box-shadow: inset 0 0 0 4px var(--surface); }
+.enc { display: inline-flex; gap: 6px; align-items: center; }
+header.top { display: grid; gap: 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: 0.82rem; padding: 3px 10px; border-radius: 999px; background: var(--soft); color: var(--ink); border: 1px solid var(--line); }
+.tour { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 16px; }
+.tour p { flex: 1 1 260px; }
+
+section.step { display: grid; gap: 14px; }
+.step-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.step-n { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); font: 700 0.95rem var(--f-display); flex: none; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; min-width: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.note { font-size: 0.86rem; color: var(--muted); }
+.drop { border: 1.5px dashed var(--field); border-radius: var(--r); padding: 16px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (max-width: 420px) { .panel, .drop { padding: 12px; } }
+.drop.over { border-color: var(--accent); background: var(--soft); }
+.status { font-size: 0.92rem; }
+ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+details.help { border-left: 3px solid var(--line); padding: 2px 0 2px 12px; }
+.mapguide { margin: 10px 0 14px; }
+.mapguide h3 { font-size: 1rem; margin-bottom: 6px; }
+.mapsteps { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; }
+.mapguide.attention { outline: 3px solid var(--accent); outline-offset: 2px; }
+details.help summary { cursor: pointer; color: var(--accent); font-weight: 500; }
+details.help[open] summary { margin-bottom: 6px; }
+details.help p + p { margin-top: 6px; }
+
+.domains { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.dom { background: var(--surface); border: 1px solid var(--line); border-top: 5px solid var(--c); border-radius: var(--r); padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.dom-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dom-id { font: 700 1.05rem var(--f-display); color: var(--c); }
+.dom-head input[type="text"] { flex: 1 1 160px; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font-weight: 600; color: var(--muted); font-size: 0.8rem; }
+td.num, th.num { text-align: right; }
+td.num { white-space: nowrap; }
+th.num { font-family: inherit; }
+.items td input[type="text"] { width: 100%; min-width: 170px; }
+.items td select { width: 100%; min-width: 150px; }
+.items td:first-child { width: 44px; }
+@media (max-width: 640px) {
+  .items thead { display: none; }
+  .items, .items tbody { display: block; }
+  .items tr { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .items td { display: block; padding: 0; border: none; }
+  .items td:first-child { grid-row: span 4; width: auto; padding-top: 8px; }
+  .items td input[type="text"], .items td select { min-width: 0; }
+}
+.miss { color: var(--warn); font-weight: 600; font-size: 0.82rem; }
+.settings { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 10px; }
+.settings label { display: grid; gap: 4px; font-size: 0.86rem; color: var(--muted); }
+.run { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+
+.alertbox { border: 1px solid var(--warn); background: var(--warn-bg); border-radius: var(--r); padding: 12px 16px; display: grid; gap: 6px; }
+.alertbox h3 { color: var(--warn); }
+.errbox { display: block; border: 1px solid var(--bad); background: var(--bad-bg); border-radius: var(--r); padding: 10px 14px; color: var(--ink); }
+.errbox b { color: var(--bad); }
+.summary { display: grid; gap: 12px; }
+.kpis { display: flex; flex-wrap: wrap; gap: 10px 26px; align-items: baseline; }
+.kpis b { font: 600 1.25rem var(--f-display); }
+.plainsum { max-width: 75ch; }
+.pill { display: inline-block; font-size: 0.78rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); } .pill.warn { background: var(--warn-bg); color: var(--warn); } .pill.bad { background: var(--bad-bg); color: var(--bad); } .pill.na { background: var(--soft); color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; }
+ul.decisions { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 0.9rem; }
+.bars { display: grid; gap: 14px; }
+.bar-dom h3 { color: var(--c); margin-bottom: 6px; }
+.bar { display: grid; grid-template-columns: minmax(96px, 40%) 1fr 56px; gap: 8px; align-items: center; font-size: 0.85rem; padding: 2px 0; }
+.bar .track { height: 10px; background: var(--soft); border-radius: 5px; position: relative; overflow: hidden; }
+.bar .fill { position: absolute; top: 0; bottom: 0; left: 0; background: var(--c); border-radius: 5px; }
+.bar .lab { overflow-wrap: anywhere; line-height: 1.25; }
+.heat td { text-align: center; font-family: var(--f-mono); font-size: 0.85rem; }
+svg text { fill: var(--muted); font: 11px var(--f-mono); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 0.82rem; color: var(--muted); margin-top: 8px; }
+.swatch { display: inline-block; width: 18px; border-top: 2px dashed currentColor; vertical-align: middle; margin-right: 4px; }
+.disclaimer { border-left: 3px solid var(--accent); padding: 12px 16px; background: var(--surface); border-radius: 0 var(--r) var(--r) 0; font-size: 0.92rem; display: grid; gap: 6px; }
+footer { font-size: 0.85rem; color: var(--muted); display: grid; gap: 6px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+</style>
+</head>
+<body>
+
+
+<main class="wrap" id="app">
+  <header class="top">
+    <div class="topbar">
+      <div class="eyebrow" data-t="brand"></div>
+      <div class="lang" role="group" aria-label="Language / Idioma">
+        <button type="button" data-lang="en" aria-pressed="true" lang="en">English</button>
+        <button type="button" data-lang="es" aria-pressed="false" lang="es">Español</button>
+      </div>
+    </div>
+    <h1 data-t="title"></h1>
+    <p class="lede" data-t="lede"></p>
+    <div class="chips">
+      <span class="chip" data-t="chip_private"></span>
+      <span class="chip" data-t="chip_same"></span>
+      <span class="chip" id="chip-example" data-t="chip_example"></span>
+    </div>
+    <div class="tour"><p data-t="tour_text"></p><a href="tour.html" data-t="tour_link"></a></div>
+  </header>
+
+  <section class="step" aria-labelledby="s1">
+    <div class="step-head"><span class="step-n" aria-hidden="true">1</span><h2 id="s1" data-t="s1"></h2></div>
+    <div class="panel">
+      <div class="drop" id="drop">
+        <div>
+          <p><b data-t="s1_shape"></b></p>
+          <ul class="plain note" style="margin-top:6px">
+            <li data-t="s1_tip1"></li><li data-t="s1_tip2"></li><li data-t="s1_tip3"></li>
+          </ul>
+          <details class="help" id="howto" style="margin-top:8px"><summary data-t="howto_q"></summary>
+            <ul class="plain note">
+              <li data-t="howto_1"></li><li data-t="howto_2"></li><li data-t="howto_3"></li>
+              <li data-t="howto_4"></li><li data-t="howto_5"></li>
+            </ul>
+            <p class="note" style="margin-top:8px" data-t="howto_ex"></p>
+            <div class="scroll" role="region" tabindex="0" id="howto-wrap" style="margin-top:6px"><table id="tbl-howto"></table></div>
+            <div class="row" style="margin-top:8px">
+              <button id="btn-dl-example" type="button" data-t="dl_example"></button>
+              <button id="btn-dl-example-cfg" type="button" data-t="dl_example_cfg"></button>
+            </div>
+            <p class="note" style="margin-top:6px" data-t="howto_sim"></p>
+          </details>
+        </div>
+        <div class="row">
+          <label for="file-data" class="note" data-t="s1_choose"></label>
+          <input type="file" id="file-data" accept=".csv,.txt,.tsv">
+          <span class="enc"><label for="enc" class="note" data-t="enc_lbl"></label>
+            <select id="enc"><option value="utf-8" data-t="enc_utf8"></option><option value="windows-1252" data-t="enc_1252"></option></select></span>
+          <button id="btn-example" type="button" data-t="s1_example"></button>
+        </div>
+      </div>
+      <p class="status" id="data-status" role="status" aria-live="polite" style="margin-top:10px"></p>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="s2">
+    <div class="step-head"><span class="step-n" aria-hidden="true">2</span><h2 id="s2" data-t="s2"></h2></div>
+    <p class="lede" data-t="s2_lede"></p>
+    <div class="panel mapguide" id="mapguide">
+      <h3 data-t="map_h"></h3>
+      <ol class="mapsteps">
+        <li><span data-t="map_1"></span></li>
+        <li><span data-t="map_2"></span>
+          <div class="row" style="margin-top:6px"><label for="file-config" class="note" data-t="cfg_load"></label><input type="file" id="file-config" accept=".json"></div></li>
+        <li><span data-t="map_3"></span>
+          <div class="row" style="margin-top:6px"><button id="btn-article-config" type="button" data-t="map_article_btn"></button></div></li>
+        <li><span data-t="map_4"></span>
+          <div class="row" style="margin-top:6px"><button id="btn-dl-config" type="button" data-t="cfg_dl"></button><button id="btn-copy-config" type="button" data-t="cfg_copy"></button></div></li>
+      </ol>
+      <p class="note" id="config-status" role="status" aria-live="polite" style="margin-top:6px"></p>
+    </div>
+    <details class="help"><summary data-t="help_types_q"></summary><p data-t="help_reflective"></p><p data-t="help_formative"></p><p data-t="help_direction"></p></details>
+    <div class="domains" id="domains"></div>
+    <div class="panel">
+      <details id="adv">
+        <summary><b data-t="adv_title"></b> <span class="note" data-t="adv_hint"></span></summary>
+        <div class="settings">
+          <label for="set-thr"><span data-t="set_thr"></span><input type="number" id="set-thr" step="0.01" min="0" max="1"></label>
+          <label for="set-miss"><span data-t="set_miss"></span><input type="number" id="set-miss" step="0.01" min="0" max="1"></label>
+          <label for="set-pc1"><span data-t="set_pc1"></span><input type="number" id="set-pc1" step="0.01" min="0" max="1"></label>
+          <label for="set-boot"><span data-t="set_boot"></span><input type="number" id="set-boot" step="100" min="0" max="10000"></label>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <button id="btn-reset-settings" type="button" data-t="set_reset"></button>
+        </div>
+      </details>
+    </div>
+    <div class="run"><button class="primary" id="btn-run" type="button" data-t="run"></button><span class="status" id="run-status" role="status" aria-live="polite"></span></div>
+  </section>
+
+  <section class="step" aria-labelledby="s3" id="results">
+    <div class="step-head"><span class="step-n" aria-hidden="true">3</span><h2 id="s3" data-t="s3"></h2></div>
+    <div id="alerts"></div>
+    <div class="panel summary" id="summary"></div>
+    <div class="panel">
+      <h3 style="margin-bottom:8px" id="h-rel" data-t="h_rel"></h3>
+      <div class="scroll" role="region" aria-labelledby="h-rel" tabindex="0"><table id="tbl-domains"></table></div>
+      <p class="note" style="margin-top:8px" data-t="alpha_legend"></p>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h3 style="margin-bottom:8px" data-t="h_dec"></h3><ul class="decisions" id="decisions"></ul></div>
+      <div class="panel"><h3 style="margin-bottom:8px" data-t="h_hist"></h3><div id="hist" role="group"></div>
+        <div class="legend" aria-hidden="true"><span style="color:var(--d4)"><i class="swatch"></i>P33</span><span style="color:var(--d1)"><i class="swatch"></i>P67</span><span style="color:var(--ink)"><i class="swatch" style="border-top-style:dotted"></i><span data-t="median"></span></span></div>
+        <p class="note" id="hist-note" style="margin-top:6px"></p></div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><h3 style="margin-bottom:4px" data-t="h_w"></h3><p class="note" style="margin-bottom:10px" data-t="w_note"></p><div class="bars" id="weights"></div></div>
+      <div class="panel">
+        <h3 style="margin-bottom:8px" id="h-inter" data-t="h_inter"></h3>
+        <div class="scroll" role="region" aria-labelledby="h-inter" tabindex="0"><table class="heat" id="tbl-inter"></table></div>
+        <p class="note" style="margin-top:10px" id="pca2-note"></p>
+        <div class="scroll" role="region" aria-label="" tabindex="0" style="margin-top:8px" id="loo-wrap"><table id="tbl-loo"></table></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <h3 id="h-scores" data-t="h_scores"></h3>
+        <div class="row">
+          <button id="btn-dl-scores" type="button" data-t="dl_scores"></button>
+          <button id="btn-copy-scores" type="button" data-t="copy_scores"></button>
+          <button id="btn-copy-report" type="button" data-t="copy_report"></button>
+          <button id="btn-dl-report" type="button" class="primary" data-t="dl_report"></button>
+        </div>
+      </div>
+      <p class="note" id="copy-status" role="status" aria-live="polite" style="margin-bottom:6px"></p>
+      <div class="scroll" role="region" aria-labelledby="h-scores" tabindex="0"><table id="tbl-scores"></table></div>
+      <p class="note" style="margin-top:6px" data-t="scores_note"></p>
+    </div>
+  </section>
+
+  <div class="disclaimer">
+    <b data-t="disc_title"></b>
+    <p data-t="disc1"></p><p data-t="disc2"></p><p data-t="disc3"></p>
+  </div>
+
+  <footer>
+    <p data-t="foot_method"></p>
+    <p data-t="foot_tech"></p>
+  </footer>
+</main>
+
+<script src="chli-core.js"></script>
+<script src="example-data.js"></script>
+<script>
+(function () {
+  "use strict";
+  // ------------------------------------------------------------ text (English / Spanish)
+  const I18N = {
+    en: {
+      title: "CHLI Builder",
+      brand: "Centenarians Healthy Longevity Index",
+      enc_lbl: "File encoding",
+      enc_utf8: "UTF-8 (recommended)",
+      enc_1252: "Windows-1252 (older Excel in Spanish)",
+      cfg_not_json: "the file is not valid JSON",
+      lede: "The calculator builds the Centenarians Healthy Longevity Index in any cohort. A table is loaded, each column is matched to its variable, and the page repeats the published method: it checks that the variables of each domain agree, combines them into four domain scores and one index, and groups participants by their index. The index describes participants within the loaded cohort; it is not a diagnosis or a prognosis.",
+      chip_private: "The data stay on the computer: nothing is uploaded",
+      chip_same: "Same method and numbers as the Python package",
+      chip_example: "Now showing a simulated example cohort",
+      tour_text: "For readers new to the CHLI, a short guided tour shows how the index is built, step by step, and what it is for.",
+      tour_link: "Guided tour →",
+      s1: "Loading the cohort",
+      s1_shape: "One row per participant and one column per variable, saved as CSV.",
+      s1_tip1: "From Excel: File › Save as › CSV UTF-8. Comma, semicolon or tab separators all work.",
+      s1_tip2: "Missing values are left empty (NA, N/A and similar codes also work).",
+      s1_tip3: "Cells must hold numbers only: 12.5 or 12,5, not “12.5 kg”. Cells that are not numbers are listed in the results.",
+      s1_choose: "CSV file:",
+      howto_q: "How should the file be prepared?",
+      map_h: "How the columns are assigned",
+      map_1: "If the columns of the file have the same names as in the example, they are already assigned.",
+      map_2: "If a configuration was saved before, it is loaded here.",
+      map_3: "For the Colombian cohort of the article, its configuration is applied with one click.",
+      map_4: "The first time with a new cohort, each card below takes the column of each variable and its direction; variables that were not measured are unticked. When finished, the configuration is saved for next time.",
+      map_article_btn: "Use the configuration of the article (Colombian cohort)",
+      cfg_dl: "Download this configuration (.json)",
+      cfg_article: "The configuration of the article was applied.",
+      cfg_article_auto: "The columns of the file match the Colombian cohort of the article, so its configuration was applied.",
+      howto_1: "The first row holds the column names; each following row is one participant.",
+      howto_2: "One column per variable, with the value as measured (for example the total Barthel score). Units go in the column name, not in the cell.",
+      howto_3: "One column with the identifier of each participant (for example id, sample_id or código); it is copied as is into the results.",
+      howto_4: "The column names do not need to match the example: in step 2 each variable is assigned to its column, and that assignment can be saved as a configuration (.json) and loaded again next time.",
+      howto_5: "Each domain needs at least two variables. Missing values are left empty.",
+      howto_ex: "The first rows and columns of the example file look like this:",
+      howto_aria: "First rows of the example file",
+      dl_example: "Download the example file (CSV)",
+      dl_example_cfg: "Download its configuration (JSON)",
+      howto_sim: "The example file is simulated: no value comes from a real participant. The same files are in the repository (examples/synthetic_cohort.csv and configs/example_synthetic.json).",
+      need_mapping: "The file was loaded. Its columns do not match the example: step 2 explains how to assign them.",
+      s1_example: "Use the simulated example",
+      loaded: "{name}: {n} participants and {c} columns loaded.",
+      loaded_blank: " {k} empty rows were ignored.",
+      example_name: "Simulated example cohort (no real participants)",
+      read_error: "Could not read {name}: {msg}",
+      s2: "Matching columns to variables",
+      s2_lede: "Each card is one domain of healthy aging. For each variable, the column of the file that holds it is selected and its direction is set: whether a higher value is better or worse. Variables the cohort did not measure are unticked. The simulated example is already filled in.",
+      help_types_q: "What do “reflective” and “formative” mean?",
+      help_reflective: "Reflective (D1, D3, D4 in the article): the variables are different views of the same underlying state, so they should move together. The page checks this, sets aside variables that do not agree with the rest, and summarizes the domain with its first principal component.",
+      help_formative: "Formative (D2): the markers measure distinct processes (for example telomeres and mitochondrial DNA) that are not expected to agree. They are not screened; the domain is their simple average.",
+      help_direction: "Direction: “higher is worse” applies to scales where a high score means more impairment (frailty, CDR, depression, insomnia, CRP…). The page flips them so that, inside the index, higher always means healthier.",
+      dom_name: "Domain name",
+      dom_type: "Domain type",
+      type_ref: "Reflective · principal component",
+      type_form: "Formative · average",
+      th_use: "Use", th_var: "Variable", th_col: "Column in the file", th_dir: "Direction", th_extra: "Optimum",
+      use_lbl: "Use {v} ({d})", name_lbl: "Name of variable {i} in {d}", col_lbl: "Column for {v} ({d})", dir_lbl: "Direction of {v} ({d})", target_lbl: "Optimum value for {v} ({d})",
+      choose_col: "— select a column —",
+      dir_up: "Higher is better", dir_down: "Higher is worse",
+      dist_to: "distance to",
+      not_found: "“{c}” is not in the file: its column still needs to be selected",
+      add_var: "Add a variable to {d}",
+      new_var: "New variable",
+      adv_title: "Advanced settings",
+      adv_hint: "· unchanged, they repeat the published method",
+      set_thr: "Screening: minimum item-total correlation (ρ)",
+      set_miss: "Reflective variables: maximum share of missing values",
+      set_pc1: "Minimum variance explained by the first component",
+      set_boot: "Bootstrap replicates for the alpha confidence interval",
+      set_reset: "Restore published settings",
+      set_bad: "{f} must be a number between {lo} and {hi}. The published value ({v}) was restored.",
+      cfg_load: "Load a saved configuration (.json):",
+      cfg_copy: "Copy this configuration",
+      cfg_copied: "Configuration copied. It can be saved as a .json file and reused.",
+      cfg_loaded: "Configuration {name} loaded.",
+      cfg_bad: "This file is not a valid configuration: {msg}",
+      run: "Build the index",
+      building: "Building…",
+      built: "Done: index built for {n} participants.",
+      unmapped: "{d}: a column still needs to be selected for {v}, or the variable unticked.",
+      failed: "The index could not be built.",
+      s3: "Results",
+      alerts_title: "Points to check in the file",
+      h_rel: "How well each domain holds together",
+      alpha_legend: "Cronbach's alpha: good ≥ 0.70 · acceptable 0.60–0.69 · low < 0.60. It does not apply to a formative domain, whose markers are not expected to agree.",
+      th_dom: "Domain", th_agg: "Combined as", th_vars: "Variables kept", th_cc: "Complete cases", th_alpha: "Alpha", th_ci: "95% CI", th_pc1: "Variance explained",
+      agg_pc1: "Principal component", agg_mean: "Average (formative)",
+      q_good: "good", q_ok: "acceptable", q_low: "low", q_na: "not applicable",
+      below_thr: "below threshold",
+      kp_n: "participants", kp_vars: "of {t} variables kept",
+      kp_tert: "Thirds", kp_med: "Split at the median",
+      plain_sum: "The index combines {k} domains built from {r} of the {t} mapped variables. {best} holds together best (alpha {a}). Splitting the cohort into thirds of the index gives {h} Healthy, {i} Intermediate and {dd} Non-healthy participants.",
+      plain_removed: " The check of agreement set aside: {list}.",
+      h_dec: "What the method decided, and why",
+      dec_none: "No variable was set aside.",
+      dec_unusable: "{d}: {v} set aside because it has no variation or almost no data",
+      dec_missing: "{d}: {v} set aside, {p}% of values missing",
+      dec_screen: "{d}: {v} set aside because it does not agree with the rest of the domain (ρ = {r})",
+      dec_alpha: "{d}: alpha {a} before the check, {b} after",
+      dec_noitem: "{d}: {k} participants have none of its variables; their score comes only from imputation with the median",
+      dec_form: "{d}: formative domain, not checked; a low alpha is expected because its markers measure different processes",
+      h_hist: "How the index is distributed",
+      median: "median",
+      hist_aria: "Histogram of the index (CHLI_equal) with the two cut-points between thirds and the median",
+      hist_note: "Mean {m}, SD {s}, median {md}, range {lo} to {hi}. Dashed lines: cut-points between thirds, P33 = {p33} and P67 = {p67}; dotted line: median.",
+      h_w: "Weight of each variable in its domain",
+      w_note: "Longer bars mean the variable counts more in the domain score.",
+      w_pc1: "principal component loadings", w_eq: "equal weights",
+      h_inter: "How the domains relate to each other",
+      pca2: "Spearman correlations between domain scores. A principal component of the four domains explains <b>{v}%</b> of their variance (loadings {l}); its ranking agrees with the index at ρ = {r}.",
+      th_without: "Index without", th_rho_full: "ρ with the full index", th_rho_excl: "ρ with the domain left out",
+      h_scores: "Scores of each participant",
+      dl_scores: "Download scores (CSV)", copy_scores: "Copy scores", copy_report: "Copy report",
+      dl_report: "Download report", rep_title: "CHLI report", rep_print: "Print or save as PDF",
+      rep_meta: "Generated on {d} with the CHLI web calculator (version 1.0.0).", rep_file: "File", rep_cfg: "Configuration",
+      rep_n: "Participants used", rep_rows: "Rows in the file", rep_settings: "Settings",
+      rep_settings_v: "item-total threshold {t} · maximum missing in reflective domains {m} · minimum PC1 variance {p} · bootstrap {b} replicates (seed {s})",
+      rep_cfg_h: "Configuration used: variables, columns and direction", rep_var: "Variable", rep_col: "Column", rep_dir: "Direction",
+      rep_tr: "Transformation", rep_tr_v: "distance to {t}", rep_scores: "The scores of each participant are in the CSV file downloaded from the calculator; this report contains results for the cohort as a whole.",
+      rep_saved: "Report downloaded. It opens in any browser and can be printed or saved as PDF.",
+      copied_scores: "Scores copied as CSV, ready to paste into a spreadsheet.",
+      copied_report: "Report copied (Markdown).",
+      dl_hint: "If no file was saved, “Copy scores” can be used instead.",
+      copy_blocked: "Copying is blocked here. The text below can be selected and copied:",
+      scores_note: "First 12 rows shown. Domain scores and the CHLI are standardized within this cohort (mean 0, SD 1). In the downloaded file the group labels are kept in English (Healthy, Intermediate, Non-healthy) so that files from different users match.",
+      ph: { Healthy: "Healthy", Intermediate: "Intermediate", "Non-healthy": "Non-healthy", "": "—" },
+      disc_title: "What the CHLI is and is not",
+      disc1: "The index ranks participants within the cohort on which it is built, so scores from two cohorts are not on the same scale. The index has to be built again in each cohort, without importing cut-points from another study.",
+      disc2: "Molecular markers measured by qPCR (mitochondrial DNA copy number, relative telomere length) depend on the assay and the laboratory. The phenotypic age residual must be computed within each cohort (the Python package provides phenoage_residual).",
+      disc3: "In the Colombian centenarian cohort the physical function domain (D1) alone discriminated mortality as well as the full index. The CHLI is offered to characterize phenotypes, not to predict outcomes.",
+      foot_method: "Method: Aya V, et al. The Centenarians Healthy Longevity Index: a multidimensional framework for phenotypic characterization of successful aging. Manuscript in preparation.",
+      foot_tech: "Omega is computed only by the Python package. Bootstrap confidence intervals use a different random sequence here and can differ from Python in the third decimal; every other number matches it.",
+    },
+    es: {
+      title: "Calculadora del CHLI",
+      brand: "Índice de Longevidad Saludable en Centenarios",
+      enc_lbl: "Codificación del archivo",
+      enc_utf8: "UTF-8 (recomendada)",
+      enc_1252: "Windows-1252 (Excel antiguo en español)",
+      cfg_not_json: "el archivo no es un JSON válido",
+      lede: "La calculadora construye el Índice de Longevidad Saludable en Centenarios (CHLI) en cualquier cohorte. Se carga una tabla, se indica qué columna corresponde a cada variable y la página repite el método publicado: comprueba que las variables de cada dominio concuerden, las combina en cuatro puntajes de dominio y un índice, y agrupa a los participantes según su índice. El índice describe a los participantes dentro de la cohorte cargada; no es un diagnóstico ni un pronóstico.",
+      chip_private: "Los datos no salen del computador: no se sube nada",
+      chip_same: "Mismo método y mismos números que el paquete de Python",
+      chip_example: "Ahora se muestra una cohorte de ejemplo simulada",
+      tour_text: "Para quien no conoce el CHLI, un recorrido corto muestra paso a paso cómo se construye el índice y para qué sirve.",
+      tour_link: "Ver el recorrido guiado →",
+      s1: "Carga de la cohorte",
+      s1_shape: "Una fila por participante y una columna por variable, guardada como CSV.",
+      s1_tip1: "Desde Excel: Archivo › Guardar como › CSV UTF-8. Sirven separadores de coma, punto y coma o tabulador.",
+      s1_tip2: "Los valores faltantes se dejan vacíos (también sirven NA, N/A y códigos parecidos).",
+      s1_tip3: "Las celdas deben contener solo números: 12.5 o 12,5, no «12,5 kg». Las celdas que no son números se listan en los resultados.",
+      s1_choose: "Archivo CSV:",
+      howto_q: "¿Cómo debe estar el archivo?",
+      map_h: "Cómo se asignan las columnas",
+      map_1: "Si las columnas del archivo se llaman igual que en el ejemplo, ya están asignadas.",
+      map_2: "Si antes se guardó una configuración, se carga aquí.",
+      map_3: "Para la cohorte colombiana del artículo, su configuración se aplica con un clic.",
+      map_4: "La primera vez con una cohorte nueva, en cada tarjeta de abajo se elige la columna de cada variable y su dirección; las variables que no se midieron se desmarcan. Al terminar, la configuración se guarda para la próxima vez.",
+      map_article_btn: "Usar la configuración del artículo (cohorte colombiana)",
+      cfg_dl: "Descargar esta configuración (.json)",
+      cfg_article: "Se aplicó la configuración del artículo.",
+      cfg_article_auto: "Las columnas del archivo coinciden con la cohorte colombiana del artículo, así que se aplicó su configuración.",
+      howto_1: "La primera fila lleva los nombres de las columnas; cada fila siguiente es un participante.",
+      howto_2: "Una columna por variable, con el valor tal como se midió (por ejemplo, el puntaje total del Barthel). Las unidades van en el nombre de la columna, no en la celda.",
+      howto_3: "Una columna con el identificador de cada participante (por ejemplo, id, sample_id o código); se copia tal cual en los resultados.",
+      howto_4: "Los nombres de las columnas no tienen que coincidir con los del ejemplo: en el paso 2 cada variable se asigna a su columna, y esa asignación puede guardarse como configuración (.json) para cargarla de nuevo la próxima vez.",
+      howto_5: "Cada dominio necesita al menos dos variables. Los valores faltantes se dejan vacíos.",
+      howto_ex: "Así se ven las primeras filas y columnas del archivo de ejemplo:",
+      howto_aria: "Primeras filas del archivo de ejemplo",
+      dl_example: "Descargar el archivo de ejemplo (CSV)",
+      dl_example_cfg: "Descargar su configuración (JSON)",
+      howto_sim: "El archivo de ejemplo es simulado: ningún valor viene de un participante real. Los mismos archivos están en el repositorio (examples/synthetic_cohort.csv y configs/example_synthetic.json).",
+      need_mapping: "Se cargó el archivo. Sus columnas no coinciden con las del ejemplo: el paso 2 explica cómo asignarlas.",
+      s1_example: "Usar el ejemplo simulado",
+      loaded: "{name}: se cargaron {n} participantes y {c} columnas.",
+      loaded_blank: " Se ignoraron {k} filas vacías.",
+      example_name: "Cohorte de ejemplo simulada (sin participantes reales)",
+      read_error: "No se pudo leer {name}: {msg}",
+      s2: "Asignación de columnas a variables",
+      s2_lede: "Cada tarjeta es un dominio del envejecimiento saludable. Para cada variable se selecciona la columna del archivo que la contiene y se indica si un valor alto es mejor o peor. Las variables que la cohorte no midió se desmarcan. El ejemplo simulado ya viene completo.",
+      help_types_q: "¿Qué significan «reflexivo» y «formativo»?",
+      help_reflective: "Reflexivo (D1, D3 y D4 en el artículo): las variables son miradas distintas de un mismo estado de fondo, así que deberían moverse juntas. La página lo comprueba, aparta las variables que no concuerdan con el resto y resume el dominio con su primera componente principal.",
+      help_formative: "Formativo (D2): los marcadores miden procesos distintos (por ejemplo, telómeros y ADN mitocondrial) que no tienen por qué concordar. No se criban; el dominio es su promedio simple.",
+      help_direction: "Dirección: «más alto es peor» corresponde a las escalas en las que un puntaje alto significa más deterioro (fragilidad, CDR, depresión, insomnio, PCR…). La página las invierte para que, dentro del índice, más alto siempre signifique más saludable.",
+      dom_name: "Nombre del dominio",
+      dom_type: "Tipo de dominio",
+      type_ref: "Reflexivo · componente principal",
+      type_form: "Formativo · promedio",
+      th_use: "Usar", th_var: "Variable", th_col: "Columna en el archivo", th_dir: "Dirección", th_extra: "Óptimo",
+      use_lbl: "Usar {v} ({d})", name_lbl: "Nombre de la variable {i} en {d}", col_lbl: "Columna de {v} ({d})", dir_lbl: "Dirección de {v} ({d})", target_lbl: "Valor óptimo de {v} ({d})",
+      choose_col: "— seleccionar una columna —",
+      dir_up: "Más alto es mejor", dir_down: "Más alto es peor",
+      dist_to: "distancia a",
+      not_found: "«{c}» no está en el archivo: falta seleccionar su columna",
+      add_var: "Añadir una variable a {d}",
+      new_var: "Variable nueva",
+      adv_title: "Ajustes avanzados",
+      adv_hint: "· sin cambios, repiten el método publicado",
+      set_thr: "Cribado: correlación ítem-total mínima (ρ)",
+      set_miss: "Variables reflexivas: fracción máxima de valores faltantes",
+      set_pc1: "Varianza mínima explicada por la primera componente",
+      set_boot: "Réplicas bootstrap para el intervalo de confianza de alfa",
+      set_reset: "Restaurar los ajustes publicados",
+      set_bad: "{f} debe ser un número entre {lo} y {hi}. Se restauró el valor publicado ({v}).",
+      cfg_load: "Cargar una configuración guardada (.json):",
+      cfg_copy: "Copiar esta configuración",
+      cfg_copied: "Configuración copiada. Puede guardarse como archivo .json para reutilizarla.",
+      cfg_loaded: "Se cargó la configuración {name}.",
+      cfg_bad: "Este archivo no es una configuración válida: {msg}",
+      run: "Construir el índice",
+      building: "Construyendo…",
+      built: "Listo: índice construido para {n} participantes.",
+      unmapped: "{d}: falta seleccionar una columna para {v} o desmarcar la variable.",
+      failed: "No se pudo construir el índice.",
+      s3: "Resultados",
+      alerts_title: "Aspectos del archivo por revisar",
+      h_rel: "Qué tan coherente es cada dominio",
+      alpha_legend: "Alfa de Cronbach: buena ≥ 0,70 · aceptable 0,60–0,69 · baja < 0,60. No aplica a un dominio formativo, cuyos marcadores no tienen por qué concordar.",
+      th_dom: "Dominio", th_agg: "Se combina como", th_vars: "Variables conservadas", th_cc: "Casos completos", th_alpha: "Alfa", th_ci: "IC 95 %", th_pc1: "Varianza explicada",
+      agg_pc1: "Componente principal", agg_mean: "Promedio (formativo)",
+      q_good: "buena", q_ok: "aceptable", q_low: "baja", q_na: "no aplica",
+      below_thr: "bajo el umbral",
+      kp_n: "participantes", kp_vars: "de {t} variables conservadas",
+      kp_tert: "Terciles", kp_med: "Partición por la mediana",
+      plain_sum: "El índice combina {k} dominios construidos con {r} de las {t} variables asignadas. {best} es el más coherente (alfa {a}). Al dividir la cohorte en terciles del índice quedan {h} participantes saludables, {i} intermedios y {dd} no saludables.",
+      plain_removed: " La comprobación de concordancia apartó: {list}.",
+      h_dec: "Qué decidió el método y por qué",
+      dec_none: "No se apartó ninguna variable.",
+      dec_unusable: "{d}: se apartó {v} porque no tiene variación o casi no tiene datos",
+      dec_missing: "{d}: se apartó {v}, con {p} % de valores faltantes",
+      dec_screen: "{d}: se apartó {v} porque no concuerda con el resto del dominio (ρ = {r})",
+      dec_alpha: "{d}: alfa {a} antes de la comprobación, {b} después",
+      dec_noitem: "{d}: {k} participantes no tienen ninguna de sus variables; su puntaje viene solo de la imputación con la mediana",
+      dec_form: "{d}: dominio formativo, no se comprueba; se espera un alfa bajo porque sus marcadores miden procesos distintos",
+      h_hist: "Cómo se distribuye el índice",
+      median: "mediana",
+      hist_aria: "Histograma del índice (CHLI_equal) con los dos puntos de corte entre terciles y la mediana",
+      hist_note: "Media {m}, DE {s}, mediana {md}, rango {lo} a {hi}. Líneas discontinuas: puntos de corte entre terciles, P33 = {p33} y P67 = {p67}; línea punteada: mediana.",
+      h_w: "Peso de cada variable en su dominio",
+      w_note: "Una barra más larga indica que la variable pesa más en el puntaje del dominio.",
+      w_pc1: "cargas de la componente principal", w_eq: "pesos iguales",
+      h_inter: "Cómo se relacionan los dominios entre sí",
+      pca2: "Correlaciones de Spearman entre los puntajes de dominio. Una componente principal de los cuatro dominios explica el <b>{v} %</b> de su varianza (cargas {l}); su ordenamiento concuerda con el índice con ρ = {r}.",
+      th_without: "Índice sin", th_rho_full: "ρ con el índice completo", th_rho_excl: "ρ con el dominio retirado",
+      h_scores: "Puntajes de cada participante",
+      dl_scores: "Descargar puntajes (CSV)", copy_scores: "Copiar puntajes", copy_report: "Copiar informe",
+      dl_report: "Descargar informe", rep_title: "Informe del CHLI", rep_print: "Imprimir o guardar como PDF",
+      rep_meta: "Generado el {d} con la calculadora web del CHLI (versión 1.0.0).", rep_file: "Archivo", rep_cfg: "Configuración",
+      rep_n: "Participantes usados", rep_rows: "Filas en el archivo", rep_settings: "Ajustes",
+      rep_settings_v: "umbral ítem-total {t} · máximo de faltantes en dominios reflexivos {m} · varianza mínima de la PC1 {p} · bootstrap de {b} réplicas (semilla {s})",
+      rep_cfg_h: "Configuración usada: variables, columnas y dirección", rep_var: "Variable", rep_col: "Columna", rep_dir: "Dirección",
+      rep_tr: "Transformación", rep_tr_v: "distancia a {t}", rep_scores: "Los puntajes de cada participante están en el archivo CSV que se descarga en la calculadora; este informe contiene los resultados de la cohorte en conjunto.",
+      rep_saved: "Informe descargado. Se abre en cualquier navegador y puede imprimirse o guardarse como PDF.",
+      copied_scores: "Puntajes copiados como CSV, listos para pegar en una hoja de cálculo.",
+      copied_report: "Informe copiado (Markdown).",
+      dl_hint: "Si no se guardó ningún archivo, puede usarse «Copiar puntajes».",
+      copy_blocked: "Aquí no se puede copiar automáticamente. El texto de abajo puede seleccionarse y copiarse:",
+      scores_note: "Se muestran las primeras 12 filas. Los puntajes de dominio y el CHLI están estandarizados dentro de esta cohorte (media 0, DE 1). En el archivo descargado las etiquetas de grupo se mantienen en inglés (Healthy, Intermediate, Non-healthy) para que los archivos de distintos usuarios coincidan.",
+      ph: { Healthy: "Saludable", Intermediate: "Intermedio", "Non-healthy": "No saludable", "": "—" },
+      disc_title: "Qué es y qué no es el CHLI",
+      disc1: "El índice ordena a los participantes dentro de la cohorte en la que se construye, así que los puntajes de dos cohortes no están en la misma escala. El índice debe construirse de nuevo en cada cohorte, sin trasladar puntos de corte de otro estudio.",
+      disc2: "Los marcadores moleculares medidos por qPCR (número de copias de ADN mitocondrial, longitud telomérica relativa) dependen del ensayo y del laboratorio. El residuo de la edad fenotípica debe calcularse dentro de cada cohorte (el paquete de Python incluye phenoage_residual).",
+      disc3: "En la cohorte colombiana de centenarios, el dominio de función física (D1) por sí solo discriminó la mortalidad igual que el índice completo. El CHLI se ofrece para caracterizar fenotipos, no para predecir desenlaces.",
+      foot_method: "Método: Aya V, et al. The Centenarians Healthy Longevity Index: a multidimensional framework for phenotypic characterization of successful aging. Manuscrito en preparación.",
+      foot_tech: "Omega solo se calcula en el paquete de Python. Los intervalos de confianza bootstrap usan aquí otra secuencia aleatoria y pueden diferir de Python en el tercer decimal; todos los demás números coinciden.",
+    },
+  };
+  // Messages produced by the shared core (English) and their Spanish versions.
+  const CORE_ES = [
+    [/^Column '(.+)' \(item '(.+)'\) is not in the data$/, "La columna «$1» (variable «$2») no está en el archivo"],
+    [/^Repeated column names: (.+)\. Each column needs a unique name\.$/, "Hay columnas con el mismo nombre: $1. Cada columna necesita un nombre único."],
+    [/^Row (\d+) has (\d+) cells but the header has (\d+)\. .*$/, "La fila $1 tiene $2 celdas pero el encabezado tiene $3. Puede sobrar un separador o haber una coma sin comillas dentro de un valor."],
+    [/^The file is empty$/, "El archivo está vacío"],
+    [/^Domain (\S+): fewer than two usable items \(without variation: (.*); too much missing: (.*)\)$/, "Dominio $1: quedan menos de dos variables utilizables (sin variación: $2; demasiados faltantes: $3)"],
+    [/^Domain (\S+): only (\d+) participant\(s\) have every item.*$/, "Dominio $1: solo $2 participante(s) tienen todas las variables, así que no se puede hacer la comprobación de concordancia. Conviene revisar las columnas asignadas o retirar la variable con más faltantes."],
+    [/^Domain (\S+): fewer than two items left after the reliability screening$/, "Dominio $1: quedan menos de dos variables después de la comprobación de concordancia"],
+    [/^Only (\d+) rows have any usable value.*$/, "Solo $1 filas tienen algún valor utilizable; el índice necesita más participantes"],
+    [/^Column '(.+)': (\d+) cell\(s\) could not be read as numbers and were treated as missing \(e\.g\. (.+)\)$/, "Columna «$1»: $2 celda(s) no se pudieron leer como números y se trataron como faltantes (p. ej., $3)"],
+    [/^(\d+) row\(s\) have no usable value and were left out$/, "$1 fila(s) no tienen ningún valor utilizable y se dejaron fuera"],
+    [/^The two tertile cut-points are equal.*$/, "Los dos puntos de corte de los terciles son iguales (muchos valores empatados); las etiquetas por terciles no son informativas en esta cohorte"],
+    [/^(.+): ([\d.]+)% missing \(formative domain, kept\)$/, (m, a, b) => `${a}: ${b.replace(".", ",")} % de faltantes (dominio formativo, se conserva)`],
+    [/^only (\d+) complete cases: reliability estimates are unstable$/, "solo $1 casos completos: las estimaciones de fiabilidad son inestables"],
+    [/^The index needs at least two domains$/, "El índice necesita al menos dos dominios"],
+    [/^Domain '(.+)': needs at least two items$/, "El dominio «$1» necesita al menos dos variables"],
+    [/^Domain '(.+)': repeated item names: (.+)$/, "Dominio «$1»: hay variables con el mismo nombre: $2"],
+    [/^Item '(.+)': transform 'neg_abs_distance' needs a numeric 'target'$/, "Variable «$1»: la distancia al óptimo necesita un valor óptimo numérico"],
+    [/^The configuration needs a list of 'domains'$/, "La configuración necesita una lista de dominios («domains»)"],
+    [/^Domain id (.+): a short name with letters, digits or '_' that starts with a letter is required.*$/, "Identificador de dominio $1: se necesita un nombre corto con letras, dígitos o «_» que empiece por una letra (por ejemplo, D1)"],
+    [/^Domain id '(.+)' is reserved for an output column; another id is needed$/, "El identificador de dominio «$1» está reservado para una columna de resultados; se necesita otro identificador"],
+    [/^Domain ids must be unique$/, "Los identificadores de dominio deben ser únicos"],
+    [/^Domain '(.+)': type must be 'reflective' or 'formative', got (.+)$/, "Dominio «$1»: el tipo debe ser «reflective» (reflexivo) o «formative» (formativo); se recibió $2"],
+    [/^Every item needs a non-empty 'name'$/, "Cada variable necesita un nombre no vacío"],
+    [/^Item '(.+)': 'column' must be the name of a column in the data$/, "Variable «$1»: «column» debe ser el nombre de una columna del archivo"],
+    [/^Item '(.+)': direction \(polarity\) must be 1 \(higher is better\) or -1 \(higher is worse\), got (.+)$/, "Variable «$1»: la dirección (polarity) debe ser 1 (más alto es mejor) o -1 (más alto es peor); se recibió $2"],
+    [/^Item '(.+)': unknown transform (.+) \(use none or 'neg_abs_distance'\)$/, "Variable «$1»: transformación desconocida $2 (se admiten ninguna o «neg_abs_distance»)"],
+    [/^Unknown settings: (.+) \(allowed: (.+)\)$/, "Ajustes desconocidos: $1 (se admiten: $2)"],
+    [/^screening_method must be 'spearman' or 'pearson'$/, "«screening_method» debe ser «spearman» o «pearson»"],
+    [/^(\w+) must be a number between (\S+) and (\S+), got (.+)$/, "«$1» debe ser un número entre $2 y $3; se recibió $4"],
+    [/^(\w+) must be a whole number of at least (\d+), got (.+)$/, "«$1» debe ser un número entero mayor o igual a $2; se recibió $3"],
+    [/^The identifier column cannot be called '(.+)'; it needs another name$/, "La columna de identificadores no puede llamarse «$1»; necesita otro nombre"],
+    [/^Identifier column '(.+)' is not in the data$/, "La columna de identificadores «$1» no está en el archivo"],
+    [/^The file ends inside a value that opens with a quotation mark.*$/, "El archivo termina dentro de un valor que abre con comillas (\") y nunca se cierran. Puede faltar una comilla o sobrar una."],
+    [/^Line (\d+): after a closing quotation mark .*$/, "Línea $1: después de cerrar unas comillas (\") se espera un separador o el final de la línea."],
+    [/^The file is not UTF-8 text \(byte (0x[0-9A-F?]+) on line (\d+)\)\..*$/, "El archivo no está en UTF-8 (byte $1 en la línea $2). Puede guardarse de nuevo como «CSV UTF-8», o elegirse la codificación Windows-1252 arriba."],
+    [/^Column '(.+)': (\d+) cell\(s\) such as (.+) were read as decimal numbers; .*$/, "Columna «$1»: $2 celda(s), como $3, se leyeron como números decimales; si la coma separa miles, el archivo debe corregirse"],
+    [/^Column '(.+)': some cells use a decimal comma and others a decimal point; .*$/, "Columna «$1»: unas celdas usan coma decimal y otras punto decimal; conviene revisar los valores"],
+  ];
+  const ES_LABELS = { "Physical function": "Función física", "Molecular biological aging": "Envejecimiento biológico molecular",
+    "Cognitive-psychological status": "Estado cognitivo-psicológico", "Metabolic-nutritional status": "Estado metabólico-nutricional",
+    "Barthel index": "Índice de Barthel", "Lawton-Brody scale": "Escala de Lawton-Brody", "Handgrip dynamometry": "Dinamometría de prensión",
+    "Frailty score": "Puntaje de fragilidad", "Sarcopenia classification": "Clasificación de sarcopenia", "Leukocyte telomere length": "Longitud telomérica leucocitaria",
+    "Phenotypic age residual": "Residuo de la edad fenotípica", "Yesavage GDS": "GDS de Yesavage", "Short anxiety scale": "Escala breve de ansiedad",
+    "BMI, distance to optimum": "IMC, distancia al óptimo", "Hemoglobin": "Hemoglobina", "Serum albumin": "Albúmina sérica", "CRP": "PCR", "Vitamin B12": "Vitamina B12" };
+
+  const $ = (id) => document.getElementById(id);
+  const COLORS = ["--d1", "--d2", "--d3", "--d4"];
+  const PUBLISHED = { screening_threshold: 0.2, max_missing_reflective: 0.3, pc1_min_variance: 0.2, bootstrap_n: 2000 };
+  const state = { rows: [], columns: [], cfg: null, result: null, isExample: true, edited: false, lang: "en", blank: 0 };
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const domColor = (i) => `var(${COLORS[i % COLORS.length]})`;
+  const T = (k, v) => { let s = (I18N[state.lang][k] ?? I18N.en[k] ?? k); if (v) for (const [a, b] of Object.entries(v)) s = s.split(`{${a}}`).join(b); return s; };
+  const dec = () => (state.lang === "es" ? "," : ".");
+  const fmt = (v, d = 3) => (v === null || v === undefined || !Number.isFinite(Number(v)) ? "—" : Number(v).toFixed(d).replace(".", dec()));
+  const coreMsg = (m) => { if (state.lang !== "es") return m; for (const [re, es] of CORE_ES) if (re.test(m)) return m.replace(re, es); return m; };
+  const shown = (s) => (state.lang === "es" && state.isExample && !state.edited && ES_LABELS[s]) || s;
+
+  // ------------------------------------------------------------ language
+  function setLang(lang, save) {
+    state.lang = lang === "es" ? "es" : "en";
+    document.documentElement.lang = state.lang;
+    document.title = T("title");
+    document.querySelectorAll("[data-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === state.lang)));
+    document.querySelectorAll("[data-t]").forEach((el) => { el.textContent = T(el.dataset.t); });
+    $("hist").setAttribute("aria-label", T("hist_aria"));
+    renderHowto();
+    if (state.cfgMsg) $("config-status").textContent = T(state.cfgMsg.key, state.cfgMsg.vars);
+    if (save) try { localStorage.setItem("chli-lang", state.lang); } catch (e) { /* storage unavailable */ }
+    if (state.cfg) renderDomains();
+    if (state.rows.length) showDataStatus();
+    // the example is built with translated names, so it is rebuilt in the new language
+    if (state.result && state.isExample && !state.edited) { run(); return; }
+    if (state.result) renderResults(); else if (state.error) renderError();
+    if (state.status) setStatus(state.status.key, state.status.vars, state.status.isError);
+  }
+  document.querySelectorAll("[data-lang]").forEach((b) => b.addEventListener("click", () => setLang(b.dataset.lang, true)));
+
+  // ------------------------------------------------------------ data
+  function showDataStatus() {
+    $("data-status").textContent = T("loaded", { name: state.dataLabel === "@example" ? T("example_name") : state.dataLabel, n: state.rows.length, c: state.columns.length })
+      + (state.blank ? T("loaded_blank", { k: state.blank }) : "");
+  }
+  function setData(text, label, isExample) {
+    const parsed = CHLI.parseCSV(text);
+    state.rows = parsed.rows; state.columns = parsed.columns; state.isExample = isExample; state.dataLabel = label;
+    state.blank = parsed.blank_rows || 0;
+    state.result = null;
+    showDataStatus();
+    $("chip-example").hidden = !isExample;
+    renderDomains();
+  }
+  function loadFile(f) {
+    if (!f) return;
+    state.file = f;
+    f.arrayBuffer().then((buf) => { setData(CHLI.decodeBytes(new Uint8Array(buf), $("enc").value), f.name, false); runIfMapped(); })
+      .catch((err) => {
+        state.result = null; state.error = err.message; renderError(); setStatus("failed", null, true);
+        $("data-status").innerHTML = `<span class="errbox"><b>${esc(T("read_error", { name: f.name, msg: coreMsg(err.message) }))}</b></span>`;
+      });
+  }
+  $("file-data").addEventListener("change", (e) => loadFile(e.target.files[0]));
+  $("enc").addEventListener("change", () => { if (state.file) loadFile(state.file); });
+  const drop = $("drop");
+  ["dragenter", "dragover"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", (e) => loadFile(e.dataTransfer.files[0]));
+  $("btn-example").addEventListener("click", () => { state.file = null; loadExample(); run(); });
+
+  function renderHowto() {
+    const ex = CHLI.parseCSV(window.CHLI_EXAMPLE.csv), cols = ex.columns.slice(0, 7);
+    $("tbl-howto").innerHTML = `<thead><tr>${cols.map((c) => `<th scope="col">${esc(c)}</th>`).join("")}<th scope="col">…</th></tr></thead><tbody>` +
+      ex.rows.slice(0, 3).map((r) => `<tr>${cols.map((c) => `<td>${esc(r[c])}</td>`).join("")}<td>…</td></tr>`).join("") + "</tbody>";
+    $("howto-wrap").setAttribute("aria-label", T("howto_aria"));
+  }
+  function saveBlob(text, name, type) {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+    document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+  $("btn-dl-example").addEventListener("click", () => saveBlob(window.CHLI_EXAMPLE.csv, "synthetic_cohort.csv", "text/csv"));
+  $("btn-dl-example-cfg").addEventListener("click", () => saveBlob(JSON.stringify(window.CHLI_EXAMPLE.config, null, 2) + "\n", "example_synthetic.json", "application/json"));
+  // a new file with the untouched example configuration: build only if the columns match
+  function useConfig(cfg, msgKey, vars) {
+    state.cfg = JSON.parse(JSON.stringify(cfg)); state.edited = true; syncSettings(); renderDomains();
+    $("config-status").textContent = T(msgKey, vars); state.cfgMsg = { key: msgKey, vars };
+    $("mapguide").classList.remove("attention");
+  }
+  function runIfMapped() {
+    const cols = new Set(state.columns), cfg = currentConfig();
+    const any = cfg.domains.some((d) => d.items.some((it) => cols.has(it.column)));
+    $("mapguide").classList.remove("attention");
+    if (!state.edited && !any) {
+      const art = window.CHLI_ARTICLE_CONFIG;
+      if (art && art.domains.every((d) => d.items.every((it) => cols.has(it.column)))) { useConfig(art, "cfg_article_auto"); run(); return; }
+      state.result = null; state.error = null; renderError(); $("alerts").innerHTML = ""; setStatus("need_mapping");
+      $("mapguide").classList.add("attention"); return;
+    }
+    run();
+  }
+
+  function loadExample() {
+    state.cfg = JSON.parse(JSON.stringify(window.CHLI_EXAMPLE.config)); state.edited = false;
+    state.cfgMsg = null; $("config-status").textContent = ""; $("mapguide").classList.remove("attention");
+    setData(window.CHLI_EXAMPLE.csv, "@example", true);
+    syncSettings();
+  }
+
+  // ------------------------------------------------------------ configuration
+  $("file-config").addEventListener("change", (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    f.text().then((t) => {
+      let cfg; try { cfg = JSON.parse(t); } catch (err) { throw new Error(T("cfg_not_json")); }
+      CHLI.validateConfig(cfg);
+      useConfig(cfg, "cfg_loaded", { name: f.name });
+      if (state.rows.length && !state.isExample) run();
+    }).catch((err) => { $("config-status").innerHTML = `<span class="err" style="color:var(--bad)">${esc(T("cfg_bad", { msg: coreMsg(err.message) }))}</span>`; });
+  });
+  $("btn-article-config").addEventListener("click", () => { useConfig(window.CHLI_ARTICLE_CONFIG, "cfg_article"); if (state.rows.length && !state.isExample) run(); });
+  $("btn-dl-config").addEventListener("click", () => saveBlob(JSON.stringify(currentConfig(), null, 2) + "\n", "chli_config.json", "application/json"));
+  $("btn-copy-config").addEventListener("click", () => copyText(JSON.stringify(currentConfig(), null, 2), $("config-status"), T("cfg_copied")));
+  $("btn-reset-settings").addEventListener("click", () => { state.cfg.settings = Object.assign({}, state.cfg.settings, PUBLISHED); syncSettings(); $("config-status").textContent = ""; });
+
+  function syncSettings() {
+    const s = Object.assign({}, PUBLISHED, state.cfg.settings || {});
+    $("set-thr").value = s.screening_threshold; $("set-miss").value = s.max_missing_reflective;
+    $("set-pc1").value = s.pc1_min_variance; $("set-boot").value = s.bootstrap_n;
+  }
+  function readSetting(id, key, lo, hi, integer) {
+    const el = $(id), v = el.value.trim() === "" ? NaN : Number(el.value);
+    if (!Number.isFinite(v) || v < lo || v > hi || (integer && !Number.isInteger(v))) {
+      el.value = PUBLISHED[key];
+      $("config-status").textContent = T("set_bad", { f: el.closest("label").querySelector("span").textContent, lo, hi, v: PUBLISHED[key] });
+      $("adv").open = true;
+      return PUBLISHED[key];
+    }
+    return v;
+  }
+
+  function columnOptions(selected) {
+    const opts = [`<option value="">${esc(T("choose_col"))}</option>`];
+    for (const c of state.columns) opts.push(`<option value="${esc(c)}"${c === selected ? " selected" : ""}>${esc(c)}</option>`);
+    return opts.join("");
+  }
+
+  function renderDomains(focusKey) {
+    const active = document.activeElement, keepFocus = focusKey || (active && active.dataset && active.dataset.fid);
+    const host = $("domains"); host.innerHTML = "";
+    state.cfg.domains.forEach((dom, di) => {
+      const card = document.createElement("div"); card.className = "dom"; card.style.setProperty("--c", domColor(di));
+      card.setAttribute("role", "group"); card.setAttribute("aria-labelledby", `dom-${di}`);
+      const dlab = `${dom.id} · ${shown(dom.label)}`;
+      const rows = dom.items.map((it, ii) => {
+        const nm = shown(it.name), ctx = { v: nm, d: dom.id, i: ii + 1 };
+        const missing = it.column && !state.columns.includes(it.column);
+        const fid = (k) => `${di}-${ii}-${k}`;
+        const target = it.transform === "neg_abs_distance"
+          ? `<span class="note">${esc(T("dist_to"))} <input type="number" data-k="target" data-fid="${fid("target")}" value="${esc(it.target)}" step="0.5" style="width:72px" aria-label="${esc(T("target_lbl", ctx))}"></span>` : "";
+        return `<tr data-i="${ii}">
+          <td><input type="checkbox" data-k="include" data-fid="${fid("include")}" aria-label="${esc(T("use_lbl", ctx))}" ${it.exclude ? "" : "checked"}></td>
+          <td><input type="text" value="${esc(nm)}" data-k="name" data-fid="${fid("name")}" aria-label="${esc(T("name_lbl", ctx))}"></td>
+          <td><select data-k="column" data-fid="${fid("column")}" aria-label="${esc(T("col_lbl", ctx))}">${columnOptions(it.column)}</select>${missing ? `<div class="miss">${esc(T("not_found", { c: it.column }))}</div>` : ""}</td>
+          <td><select data-k="polarity" data-fid="${fid("polarity")}" aria-label="${esc(T("dir_lbl", ctx))}"><option value="1"${it.polarity == -1 ? "" : " selected"}>${esc(T("dir_up"))}</option><option value="-1"${it.polarity == -1 ? " selected" : ""}>${esc(T("dir_down"))}</option></select></td>
+          ${dom.items.some((x) => x.transform) ? `<td>${target}</td>` : ""}
+        </tr>`;
+      }).join("");
+      card.innerHTML = `<div class="dom-head"><span class="dom-id" id="dom-${di}">${esc(dom.id)}<span class="sr-only"> · ${esc(shown(dom.label))}</span></span>
+          <input type="text" value="${esc(shown(dom.label))}" data-dk="label" data-fid="${di}-label" aria-label="${esc(T("dom_name"))} ${esc(dom.id)}">
+          <select data-dk="type" data-fid="${di}-type" aria-label="${esc(T("dom_type"))} ${esc(dom.id)}"><option value="reflective"${dom.type === "reflective" ? " selected" : ""}>${esc(T("type_ref"))}</option><option value="formative"${dom.type === "formative" ? " selected" : ""}>${esc(T("type_form"))}</option></select></div>
+        <div class="scroll" role="region" aria-label="${esc(dlab)}" tabindex="0"><table class="items"><thead><tr><th>${esc(T("th_use"))}</th><th>${esc(T("th_var"))}</th><th>${esc(T("th_col"))}</th><th>${esc(T("th_dir"))}</th>${dom.items.some((x) => x.transform) ? `<th>${esc(T("th_extra"))}</th>` : ""}</tr></thead><tbody>${rows}</tbody></table></div>
+        <div><button type="button" data-add data-fid="${di}-add">${esc(T("add_var", { d: dom.id }))}</button></div>`;
+      card.addEventListener("change", (e) => {
+        const t = e.target; materializeLabels();
+        if (t.dataset.dk) { dom[t.dataset.dk] = t.value; return; }
+        const tr = t.closest("tr"); if (!tr) return; const it = dom.items[+tr.dataset.i];
+        if (t.dataset.k === "include") it.exclude = !t.checked;
+        else if (t.dataset.k === "polarity") it.polarity = +t.value;
+        else if (t.dataset.k === "target") it.target = t.value;
+        else it[t.dataset.k] = t.value;
+        if (t.dataset.k === "column") renderDomains(t.dataset.fid);
+      });
+      card.querySelector("[data-add]").addEventListener("click", () => {
+        materializeLabels();
+        dom.items.push({ name: T("new_var"), column: "", polarity: 1 });
+        renderDomains(`${di}-${dom.items.length - 1}-column`);
+      });
+      host.appendChild(card);
+    });
+    if (keepFocus) { const el = host.querySelector(`[data-fid="${keepFocus}"]`); if (el) el.focus(); }
+  }
+  // Once the user edits the example, the displayed (possibly translated) names become the real ones.
+  function materializeLabels() {
+    if (state.edited) return;
+    if (state.isExample && state.lang === "es") state.cfg.domains.forEach((d) => { d.label = shown(d.label); d.items.forEach((it) => { it.name = shown(it.name); }); });
+    state.edited = true;
+  }
+
+  function currentConfig() {
+    const cfg = JSON.parse(JSON.stringify(state.cfg));
+    if (state.isExample && !state.edited && state.lang === "es") cfg.domains.forEach((d) => { d.label = shown(d.label); d.items.forEach((it) => { it.name = shown(it.name); }); });
+    cfg.domains.forEach((d) => { d.items = d.items.filter((it) => !it.exclude).map(({ exclude, ...it }) => it); });
+    cfg.settings = Object.assign({}, cfg.settings, {
+      screening_threshold: readSetting("set-thr", "screening_threshold", 0, 1, false),
+      max_missing_reflective: readSetting("set-miss", "max_missing_reflective", 0, 1, false),
+      pc1_min_variance: readSetting("set-pc1", "pc1_min_variance", 0, 1, false),
+      bootstrap_n: readSetting("set-boot", "bootstrap_n", 0, 10000, true) });
+    return cfg;
+  }
+
+  // ------------------------------------------------------------ run
+  $("btn-run").addEventListener("click", run);
+  function setStatus(key, vars, isError) {
+    state.status = key ? { key, vars, isError } : null;
+    const el = $("run-status");
+    if (!key) { el.textContent = ""; return; }
+    if (isError) el.innerHTML = `<span class="err" style="color:var(--bad)">${esc(T(key, vars))}</span>`;
+    else el.textContent = T(key, vars);
+  }
+  function idColumn() { return state.columns.find((c) => /^(id|sample_?id|participant|subject|codigo|código|id_participante)$/i.test(c)); }
+  function run() {
+    const cfg = currentConfig();
+    for (const d of cfg.domains) {
+      const unmapped = d.items.filter((it) => !it.column);
+      if (unmapped.length) { setStatus("unmapped", { d: d.id, v: unmapped.map((u) => u.name).join(", ") }, true); return; }
+    }
+    setStatus("building");
+    setTimeout(() => {
+      try {
+        state.result = CHLI.build(state.rows, cfg, idColumn()); state.cfgUsed = cfg; state.error = null;
+        renderResults(); setStatus("built", { n: state.result.report.n });
+      } catch (err) {
+        state.result = null; state.error = err.message;
+        setStatus("failed", null, true);
+        renderError();
+      }
+    }, 10);
+  }
+  function renderError() {
+    $("alerts").innerHTML = `<div class="errbox" role="alert"><b>${esc(T("failed"))}</b> ${esc(coreMsg(state.error))}</div>`;
+    ["summary", "tbl-domains", "decisions", "hist", "hist-note", "weights", "tbl-inter", "pca2-note", "tbl-loo", "tbl-scores"].forEach((id) => { $(id).innerHTML = ""; });
+  }
+
+  // ------------------------------------------------------------ results
+  function quality(d) {
+    if (d.type === "formative" || !Number.isFinite(d.alpha)) return ["na", T("q_na")];
+    return d.alpha >= 0.7 ? ["ok", T("q_good")] : d.alpha >= 0.6 ? ["warn", T("q_ok")] : ["bad", T("q_low")];
+  }
+  function renderResults() {
+    if (!state.result) { if (state.error) renderError(); return; }
+    const { report: r, scores } = state.result, ids = Object.keys(r.domains);
+    const lab = (k) => shown(r.domains[k].label), nm = (s) => shown(s);
+    const warns = (r.warnings || []).map(coreMsg);
+    $("alerts").innerHTML = warns.length ? `<div class="alertbox" role="status"><h3>${esc(T("alerts_title"))}</h3><ul class="plain">${warns.map((w) => `<li>${esc(w)}</li>`).join("")}</ul></div>` : "";
+
+    const nCons = ids.reduce((s, k) => s + r.domains[k].items_considered.length, 0), nRet = ids.reduce((s, k) => s + r.domains[k].items_retained.length, 0);
+    const tc = r.phenotypes.tertile_counts, mc = r.phenotypes.median_counts, ph = T("ph");
+    const refl = ids.filter((k) => r.domains[k].type === "reflective" && Number.isFinite(r.domains[k].alpha));
+    const best = refl.sort((a, b) => r.domains[b].alpha - r.domains[a].alpha)[0];
+    const removed = ids.flatMap((k) => [...r.domains[k].excluded_unusable, ...r.domains[k].excluded_missing, ...r.domains[k].excluded_screening].map((v) => `${nm(v)} (${k})`));
+    let plain = T("plain_sum", { k: ids.length, r: nRet, t: nCons, best: best ? `${best} · ${lab(best)}` : "—", a: best ? fmt(r.domains[best].alpha, 2) : "—",
+      h: tc.Healthy || 0, i: tc.Intermediate || 0, dd: tc["Non-healthy"] || 0 });
+    if (removed.length) plain += T("plain_removed", { list: removed.join(", ") });
+    $("summary").innerHTML = `<div class="kpis"><span><b>${r.n}</b> ${esc(T("kp_n"))}</span><span><b>${nRet}</b> ${esc(T("kp_vars", { t: nCons }))}</span>
+      <span>${esc(T("kp_tert"))}: ${esc(ph.Healthy)} <b>${tc.Healthy || 0}</b> · ${esc(ph.Intermediate)} <b>${tc.Intermediate || 0}</b> · ${esc(ph["Non-healthy"])} <b>${tc["Non-healthy"] || 0}</b></span>
+      <span>${esc(T("kp_med"))}: ${esc(ph.Healthy)} ${mc.Healthy || 0} · ${esc(ph["Non-healthy"])} ${mc["Non-healthy"] || 0}</span></div><p class="plainsum">${esc(plain)}</p>`;
+
+    let h = `<thead><tr><th>${esc(T("th_dom"))}</th><th>${esc(T("th_agg"))}</th><th class="num">${esc(T("th_vars"))}</th><th class="num">${esc(T("th_cc"))}</th><th class="num">${esc(T("th_alpha"))}</th><th class="num">${esc(T("th_ci"))}</th><th class="num">${esc(T("th_pc1"))}</th></tr></thead><tbody>`;
+    ids.forEach((k, i) => {
+      const d = r.domains[k], [q, ql] = quality(d);
+      const pc = d.pc1_variance === null ? `<span class="note">${esc(T("q_na"))}</span>` : `${fmt(100 * d.pc1_variance, 1)} %${d.pc1_meets_threshold ? "" : ` <span class="pill bad">${esc(T("below_thr"))}</span>`}`;
+      h += `<tr><td><b style="color:${domColor(i)}">${esc(k)}</b> ${esc(lab(k))}</td><td>${esc(d.type === "reflective" ? T("agg_pc1") : T("agg_mean"))}</td>
+        <td class="num">${d.items_retained.length}/${d.items_considered.length}</td><td class="num">${d.n_complete_cases}</td>
+        <td class="num">${fmt(d.alpha)} <span class="pill ${q}">${esc(ql)}</span></td>
+        <td class="num">${d.alpha_ci95 ? fmt(d.alpha_ci95[0]) + " – " + fmt(d.alpha_ci95[1]) : "—"}</td><td class="num">${pc}</td></tr>`;
+    });
+    $("tbl-domains").innerHTML = h + "</tbody>";
+
+    const D = [];
+    ids.forEach((k) => {
+      const d = r.domains[k], b = `<b>${esc(k)}</b>`, txt = (key, v) => esc(T(key, Object.assign({ d: "\u0000" }, v))).replace("\u0000", b);
+      (d.excluded_unusable || []).forEach((c) => D.push(txt("dec_unusable", { v: nm(c) })));
+      d.excluded_missing.forEach((c) => D.push(txt("dec_missing", { v: nm(c), p: fmt(d.missing_pct[c], 1) })));
+      d.excluded_screening.forEach((c) => D.push(txt("dec_screen", { v: nm(c), r: fmt(d.item_total[c]) })));
+      if (d.excluded_screening.length) D.push(txt("dec_alpha", { a: fmt(d.alpha_before_screening), b: fmt(d.alpha) }));
+      (d.warnings || []).forEach((w) => D.push(`${b}: ${esc(coreMsg(w))}`));
+      if (d.participants_without_any_item) D.push(txt("dec_noitem", { k: d.participants_without_any_item }));
+      if (d.type === "formative") D.push(txt("dec_form", {}));
+    });
+    $("decisions").innerHTML = D.length ? D.map((x) => `<li>${x}</li>`).join("") : `<li>${esc(T("dec_none"))}</li>`;
+
+    $("weights").innerHTML = ids.map((k, i) => {
+      const d = r.domains[k], max = Math.max(...Object.values(d.weights).map(Math.abs), 0.01);
+      const bars = Object.entries(d.weights).map(([n, w]) => `<div class="bar"><span class="lab">${esc(nm(n))}</span>
+        <span class="track" aria-hidden="true"><span class="fill" style="width:${(100 * Math.abs(w) / max).toFixed(1)}%;${w < 0 ? "opacity:.45" : ""}"></span></span><span class="num">${w >= 0 ? "+" : "−"}${fmt(Math.abs(w))}</span></div>`).join("");
+      return `<div class="bar-dom" style="--c:${domColor(i)}"><h3>${esc(k)} · ${esc(lab(k))} <span class="note" style="font-weight:400">${esc(d.type === "reflective" ? T("w_pc1") : T("w_eq"))}</span></h3>${bars}</div>`;
+    }).join("");
+
+    let m = `<thead><tr><th><span class="sr-only">${esc(T("th_dom"))}</span></th>${ids.map((k) => `<th class="num" scope="col">${esc(k)}</th>`).join("")}</tr></thead><tbody>`;
+    ids.forEach((a) => {
+      m += `<tr><th scope="row">${esc(a)}</th>` + ids.map((b) => {
+        if (a === b) return `<td class="note">1</td>`;
+        const v = r.inter_domain_spearman[`${a}-${b}`] ?? r.inter_domain_spearman[`${b}-${a}`];
+        const al = Math.min(Math.abs(v), 1) * 0.45;
+        return `<td style="background:color-mix(in srgb, var(--accent) ${(al * 100).toFixed(0)}%, transparent)">${v >= 0 ? "+" : "−"}${fmt(Math.abs(v), 2)}</td>`;
+      }).join("") + "</tr>";
+    });
+    $("tbl-inter").innerHTML = m + "</tbody>";
+    const s = r.second_level_pca;
+    $("pca2-note").innerHTML = T("pca2", { v: esc(fmt(100 * s.pc1_variance, 1)), l: ids.map((k) => `${esc(k)} ${esc(fmt(s.loadings[k]))}`).join(", "), r: esc(fmt(s.spearman_with_CHLI_equal)) });
+    $("loo-wrap").setAttribute("aria-label", T("th_without"));
+    $("tbl-loo").innerHTML = `<thead><tr><th>${esc(T("th_without"))}</th><th class="num">${esc(T("th_rho_full"))}</th><th class="num">${esc(T("th_rho_excl"))}</th></tr></thead><tbody>` +
+      ids.map((k) => `<tr><td>${esc(k)} · ${esc(lab(k))}</td><td class="num">${fmt(r.leave_one_domain_out[k].rho_with_full_index)}</td><td class="num">${fmt(r.leave_one_domain_out[k].rho_with_excluded_domain)}</td></tr>`).join("") + "</tbody>";
+
+    drawHist(scores.map((x) => x.CHLI_equal).filter(Number.isFinite), r.phenotypes.tertile_cutpoints, r.phenotypes.median_cutpoint);
+    const ce = r.CHLI_equal;
+    $("hist-note").textContent = T("hist_note", { m: fmt(ce.mean), s: fmt(ce.sd), md: fmt(ce.median), lo: fmt(ce.min), hi: fmt(ce.max), p33: fmt(r.phenotypes.tertile_cutpoints.P33), p67: fmt(r.phenotypes.tertile_cutpoints.P67) });
+
+    const idCol = idColumn(), cols = ["CHLI", ...ids, "phenotype_tertile", "phenotype_median"];
+    const head = (idCol ? [idCol] : []).concat(cols);
+    $("tbl-scores").innerHTML = `<thead><tr>${head.map((c) => `<th scope="col"${c.startsWith("phenotype") || c === idCol ? "" : ' class="num"'}>${esc(c)}</th>`).join("")}</tr></thead><tbody>` +
+      scores.slice(0, 12).map((x) => `<tr>${idCol ? `<td>${esc(x[idCol])}</td>` : ""}${cols.map((c) => (c.startsWith("phenotype") ? `<td>${esc(ph[x[c]] ?? x[c])}</td>` : `<td class="num">${fmt(x[c])}</td>`)).join("")}</tr>`).join("") + "</tbody>";
+  }
+
+  function drawHist(values, cuts, med) {
+    const W = 460, H = 200, P = { l: 34, r: 10, t: 10, b: 28 };
+    const mn = Math.min(...values), mx = Math.max(...values), nb = 20, w = (mx - mn) / nb || 1;
+    const counts = new Array(nb).fill(0); values.forEach((v) => counts[Math.min(nb - 1, Math.floor((v - mn) / w))]++);
+    const cmax = Math.max(...counts), X = (v) => P.l + ((v - mn) / (mx - mn || 1)) * (W - P.l - P.r), Y = (c) => H - P.b - (c / cmax) * (H - P.t - P.b);
+    let g = "";
+    counts.forEach((c, i) => { const x0 = X(mn + i * w), x1 = X(mn + (i + 1) * w); g += `<rect x="${x0 + 0.5}" y="${Y(c)}" width="${Math.max(0, x1 - x0 - 1)}" height="${H - P.b - Y(c)}" fill="var(--accent)" opacity="0.75"></rect>`; });
+    const line = (v, dash, col) => `<line x1="${X(v)}" x2="${X(v)}" y1="${P.t}" y2="${H - P.b}" stroke="${col}" stroke-width="1.5" stroke-dasharray="${dash}"></line>`;
+    g += line(cuts.P33, "5 4", "var(--d4)") + line(cuts.P67, "5 4", "var(--d1)") + line(med, "2 3", "var(--ink)");
+    const ticks = [[mn, "start"], [(mn + mx) / 2, "middle"], [mx, "end"]].map(([v, a]) => `<text x="${X(v)}" y="${H - 8}" text-anchor="${a}">${fmt(v, 2)}</text>`).join("");
+    const yt = `<text x="${P.l - 6}" y="${Y(cmax) + 4}" text-anchor="end">${cmax}</text><text x="${P.l - 6}" y="${H - P.b}" text-anchor="end">0</text>`;
+    $("hist").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(T("hist_aria"))}" aria-describedby="hist-note"><line x1="${P.l}" x2="${W - P.r}" y1="${H - P.b}" y2="${H - P.b}" stroke="var(--line)"></line>${g}${ticks}${yt}</svg>`;
+  }
+
+  // ------------------------------------------------------------ export
+  function scoresCSV() { return CHLI.toCSV(state.result.scores); }
+  function reportMD() {
+    const r = state.result.report, ids = Object.keys(r.domains), es = state.lang === "es";
+    const L = [`# ${es ? "Informe CHLI" : "CHLI report"} · ${r.config}`, "", `${es ? "Participantes" : "Participants"}: ${r.n}`, ""];
+    if ((r.warnings || []).length) L.push(`## ${T("alerts_title")}`, ...r.warnings.map((w) => `- ${coreMsg(w)}`), "");
+    L.push(`| ${T("th_dom")} | ${T("th_agg")} | ${T("th_vars")} | ${T("th_cc")} | ${T("th_alpha")} | ${T("th_ci")} | ${T("th_pc1")} |`, "|---|---|---|---|---|---|---|");
+    ids.forEach((k) => { const d = r.domains[k]; L.push(`| ${k} · ${d.label} | ${d.type} | ${d.items_retained.length}/${d.items_considered.length} | ${d.n_complete_cases} | ${fmt(d.alpha)} | ${d.alpha_ci95 ? fmt(d.alpha_ci95[0]) + " – " + fmt(d.alpha_ci95[1]) : "—"} | ${d.pc1_variance === null ? "—" : fmt(100 * d.pc1_variance, 1) + " %"} |`); });
+    L.push("", `## ${T("h_w")}`); ids.forEach((k) => L.push(`- ${k}: ` + Object.entries(r.domains[k].weights).map(([n, w]) => `${n} ${fmt(w)}`).join(", ")));
+    L.push("", `## ${T("h_dec")}`); ids.forEach((k) => { const d = r.domains[k];
+      [...(d.excluded_unusable || []), ...d.excluded_missing].forEach((c) => L.push(`- ${k}: ${c}`));
+      d.excluded_screening.forEach((c) => L.push(`- ${k}: ${c} (ρ = ${fmt(d.item_total[c])})`)); });
+    L.push("", `## ${T("kp_tert")}`, `- P33 = ${fmt(r.phenotypes.tertile_cutpoints.P33)}, P67 = ${fmt(r.phenotypes.tertile_cutpoints.P67)}`,
+      `- ${Object.entries(r.phenotypes.tertile_counts).map(([k, v]) => k + " " + v).join(", ")}`,
+      `- ${T("kp_med")}: ${Object.entries(r.phenotypes.median_counts).map(([k, v]) => k + " " + v).join(", ")}`,
+      "", `## ${es ? "Configuración usada" : "Configuration used"}`, "```json", JSON.stringify(state.cfgUsed, null, 2), "```");
+    return L.join("\n") + "\n";
+  }
+  function copyText(text, el, okMsg) {
+    const done = () => { el.textContent = okMsg; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(() => fallback());
+    else fallback();
+    function fallback() {
+      const ta = document.createElement("textarea"); ta.value = text; ta.style.width = "100%"; ta.rows = 6; ta.readOnly = true;
+      ta.setAttribute("aria-label", T("copy_blocked"));
+      el.textContent = T("copy_blocked"); el.appendChild(ta); ta.focus(); ta.select();
+    }
+  }
+  $("btn-copy-scores").addEventListener("click", () => { if (state.result) copyText(scoresCSV(), $("copy-status"), T("copied_scores")); });
+  // ------------------------------------------------------------ printable report
+  // A self-contained HTML file with the results on screen, the configuration used and the notes
+  // of the page. It opens in any browser and can be printed or saved as PDF.
+  function reportHTML() {
+    const r = state.result.report, cfg = state.cfgUsed, st = r.settings;
+    const css = [...document.querySelectorAll("style")].map((el) => el.textContent).join("\n");
+    const part = (id) => ($(id) ? $(id).outerHTML : "");
+    const sec = (title, body) => `<section class="panel rsec"><h2>${esc(title)}</h2>${body}</section>`;
+    const date = new Date().toLocaleString(state.lang === "es" ? "es-CO" : "en-GB", { dateStyle: "long", timeStyle: "short" });
+    const file = state.dataLabel === "@example" ? T("example_name") : state.dataLabel;
+    const rows = [];
+    cfg.domains.forEach((d) => d.items.forEach((it, j) => rows.push(`<tr>${j === 0 ? `<td rowspan="${d.items.length}"><b>${esc(d.id)}</b> · ${esc(shown(d.label))}<br><span class="note">${esc(T(d.type === "formative" ? "type_form" : "type_ref"))}</span></td>` : ""}` +
+      `<td>${esc(shown(it.name))}</td><td class="mono">${esc(it.column)}</td><td>${esc(T(Number(it.polarity) === -1 ? "dir_down" : "dir_up"))}</td>` +
+      `<td>${it.transform === "neg_abs_distance" ? esc(T("rep_tr_v", { t: fmt(Number(it.target), 1) })) : "—"}</td></tr>`)));
+    const cfgTable = `<div class="scroll"><table><thead><tr><th scope="col">${esc(T("th_dom"))}</th><th scope="col">${esc(T("rep_var"))}</th><th scope="col">${esc(T("rep_col"))}</th><th scope="col">${esc(T("rep_dir"))}</th><th scope="col">${esc(T("rep_tr"))}</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`;
+    const meta = `<dl class="meta"><dt>${esc(T("rep_file"))}</dt><dd>${esc(file)}</dd><dt>${esc(T("rep_cfg"))}</dt><dd>${esc(cfg.name || "CHLI")}</dd>` +
+      `<dt>${esc(T("rep_n"))}</dt><dd>${r.n}</dd><dt>${esc(T("rep_rows"))}</dt><dd>${r.n_rows_in_file}</dd>` +
+      `<dt>${esc(T("rep_settings"))}</dt><dd>${esc(T("rep_settings_v", { t: fmt(st.screening_threshold, 2), m: fmt(st.max_missing_reflective, 2), p: fmt(st.pc1_min_variance, 2), b: st.bootstrap_n, s: st.seed }))}</dd></dl>`;
+    const legend = document.querySelector("#hist + .legend");
+    const body = `<main class="report"><header class="rhead"><div><div class="eyebrow">${esc(T("brand"))}</div><h1>${esc(T("rep_title"))}</h1>` +
+      `<p class="note">${esc(T("rep_meta", { d: date }))}</p></div><button type="button" class="noprint" onclick="window.print()">${esc(T("rep_print"))}</button></header>` +
+      `<section class="panel rsec">${meta}</section>` + part("alerts") + part("summary") +
+      sec(T("h_rel"), part("tbl-domains") + `<p class="note">${esc(T("alpha_legend"))}</p>`) +
+      sec(T("h_dec"), part("decisions")) +
+      sec(T("h_hist"), part("hist") + (legend ? legend.outerHTML : "") + part("hist-note")) +
+      sec(T("h_w"), `<p class="note">${esc(T("w_note"))}</p>` + part("weights")) +
+      sec(T("h_inter"), part("tbl-inter") + part("pca2-note") + part("tbl-loo")) +
+      sec(T("rep_cfg_h"), cfgTable) +
+      `<p class="note rsec">${esc(T("rep_scores"))}</p>` +
+      `<div class="disclaimer"><b>${esc(T("disc_title"))}</b><p>${esc(T("disc1"))}</p><p>${esc(T("disc2"))}</p><p>${esc(T("disc3"))}</p></div>` +
+      `<footer><p>${esc(T("foot_method"))}</p><p>${esc(T("foot_tech"))}</p></footer></main>`;
+    const extra = `.report { max-width: 980px; margin: 0 auto; padding: 24px 20px 40px; } .rhead { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 16px; }
+      .rsec { margin-top: 14px; } .rsec h2 { font-size: 1.1rem; margin-bottom: 8px; } .meta { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0; } .meta dt { font-weight: 600; } .meta dd { margin: 0; }
+      .report table td, .report table th { vertical-align: top; } .scroll { overflow: visible !important; }
+      @media print { .noprint { display: none !important; } body { background: #fff; } .panel, .rsec { break-inside: avoid; } @page { size: A4; margin: 14mm; } }`;
+    return `<!doctype html>\n<html lang="${state.lang}" data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">` +
+      `<title>${esc(T("rep_title"))} · ${esc(file)}</title><style>${css}\n${extra}</style></head><body>${body}</body></html>\n`;
+  }
+  $("btn-dl-report").addEventListener("click", () => {
+    if (!state.result) return;
+    const day = new Date().toISOString().slice(0, 10);
+    saveBlob(reportHTML(), `${state.lang === "es" ? "informe_CHLI" : "CHLI_report"}_${day}.html`, "text/html");
+    $("copy-status").textContent = T("rep_saved");
+  });
+  $("btn-copy-report").addEventListener("click", () => { if (state.result) copyText(reportMD(), $("copy-status"), T("copied_report")); });
+  $("btn-dl-scores").addEventListener("click", () => {
+    if (!state.result) return;
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([scoresCSV()], { type: "text/csv" }));
+    a.download = "chli_scores.csv"; document.body.appendChild(a); a.click(); a.remove();
+    $("copy-status").textContent = T("dl_hint");
+  });
+
+  // ------------------------------------------------------------ start in a working state
+  let saved = null; try { saved = localStorage.getItem("chli-lang"); } catch (e) { /* storage unavailable */ }
+  const q = new URLSearchParams(location.search).get("lang");
+  state.lang = q === "es" || q === "en" ? q : saved || ((navigator.language || "").toLowerCase().startsWith("es") ? "es" : "en");
+  loadExample(); setLang(state.lang, false); run();
+})();
+</script>
+
+</body>
+</html>

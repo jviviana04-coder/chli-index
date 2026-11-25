@@ -1,0 +1,149 @@
+{
+  "name": "CHLI · synthetic example",
+  "description": "Configuration for examples/synthetic_cohort.csv. Copy this file and change the 'column' fields to match your own data.",
+  "domains": [
+    {
+      "id": "D1",
+      "label": "Physical function",
+      "type": "reflective",
+      "items": [
+        {
+          "name": "Barthel index",
+          "column": "barthel",
+          "polarity": 1
+        },
+        {
+          "name": "Lawton-Brody scale",
+          "column": "lawton_brody",
+          "polarity": 1
+        },
+        {
+          "name": "SPPB",
+          "column": "sppb",
+          "polarity": 1
+        },
+        {
+          "name": "Handgrip dynamometry",
+          "column": "handgrip_kg",
+          "polarity": 1
+        },
+        {
+          "name": "Frailty score",
+          "column": "frailty",
+          "polarity": -1
+        },
+        {
+          "name": "Sarcopenia classification",
+          "column": "sarcopenia",
+          "polarity": -1
+        }
+      ]
+    },
+    {
+      "id": "D2",
+      "label": "Molecular biological aging",
+      "type": "formative",
+      "items": [
+        {
+          "name": "mtDNA-CN",
+          "column": "mtdna_cn",
+          "polarity": 1
+        },
+        {
+          "name": "Leukocyte telomere length",
+          "column": "telomere_ts",
+          "polarity": 1
+        },
+        {
+          "name": "Phenotypic age residual",
+          "column": "phenoage_residual",
+          "polarity": -1
+        }
+      ]
+    },
+    {
+      "id": "D3",
+      "label": "Cognitive-psychological status",
+      "type": "reflective",
+      "items": [
+        {
+          "name": "MMSE",
+          "column": "mmse",
+          "polarity": 1
+        },
+        {
+          "name": "CDR-SB",
+          "column": "cdr_sb",
+          "polarity": -1
+        },
+        {
+          "name": "Yesavage GDS",
+          "column": "gds15",
+          "polarity": -1
+        },
+        {
+          "name": "SWLS",
+          "column": "swls",
+          "polarity": 1
+        },
+        {
+          "name": "ISI",
+          "column": "isi",
+          "polarity": -1
+        },
+        {
+          "name": "Short anxiety scale",
+          "column": "anxiety_short",
+          "polarity": -1
+        }
+      ]
+    },
+    {
+      "id": "D4",
+      "label": "Metabolic-nutritional status",
+      "type": "reflective",
+      "items": [
+        {
+          "name": "MNA",
+          "column": "mna",
+          "polarity": 1
+        },
+        {
+          "name": "BMI, distance to optimum",
+          "column": "bmi",
+          "polarity": 1,
+          "transform": "neg_abs_distance",
+          "target": 24
+        },
+        {
+          "name": "Hemoglobin",
+          "column": "hemoglobin",
+          "polarity": 1
+        },
+        {
+          "name": "Serum albumin",
+          "column": "albumin",
+          "polarity": 1
+        },
+        {
+          "name": "CRP",
+          "column": "crp_mg_l",
+          "polarity": -1
+        },
+        {
+          "name": "Vitamin B12",
+          "column": "vitamin_b12",
+          "polarity": 1
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "screening_method": "spearman",
+    "screening_threshold": 0.2,
+    "max_missing_reflective": 0.3,
+    "pc1_min_variance": 0.2,
+    "bootstrap_n": 2000,
+    "seed": 20261020
+  }
+}
