@@ -1,0 +1,14 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+chli_results/
+# never commit participant data
+*.xlsx
+*.xls
+*.csv
+*.tsv
+!examples/*.csv
+data/
+private/
